@@ -1,9 +1,10 @@
 const crypto = require("node:crypto");
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const screenshot = require("screenshot-desktop");
-const sharp = require("sharp");
 const { getWechatCapturesDir } = require("./capture-paths");
+
+// Lazy-load native-heavy deps so Electron startup (and desktop E2E log harness) does not load `sharp`
+// until a capture runs. `sharp` must match the Electron ABI (see `npm run rebuild:electron`).
 
 function sha256Hex(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
@@ -14,6 +15,8 @@ function clamp(value, min, max) {
 }
 
 async function captureWechatWindowPng({ rect }) {
+  const screenshot = require("screenshot-desktop");
+  const sharp = require("sharp");
   const fullPng = await screenshot({ format: "png" });
 
   const image = sharp(fullPng);

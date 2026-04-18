@@ -144,10 +144,10 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
 原因：本机 **`electron` 目录被占用**（例如正在运行 `dev:electron`、其它 Electron 应用锁住了文件）。  
 解决：先**退出**正在运行的桌面 Dev 应用与其它 Electron 进程，再执行 `npm install` / `npm ci`；必要时在任务管理器中结束 `electron.exe` 后重试。
 
-### ABI 约定（`better-sqlite3`）
+### ABI 约定（原生模块：`better-sqlite3`、SQLCipher、`sharp`）
 
 - CI / Node 单测：使用 `npm ci`，然后 `npm run lint`、`npm test`。
-- 运行 Electron 桌面进程前（按需）：执行 `npm --prefix F:\AI\project\apps\desktop run rebuild:electron`，再执行 `npm --prefix F:\AI\project\apps\desktop run dev:electron`。
+- 运行 Electron 桌面进程前（按需）：执行 `npm --prefix F:\AI\project\apps\desktop run rebuild:electron`（会为 Electron 重编 sqlite / sqlcipher / sharp），再执行 `npm --prefix F:\AI\project\apps\desktop run dev:electron`。
 - 不要在 `postinstall` 强制 `electron-rebuild`，否则可能把原生模块重编到 Electron ABI，影响同环境下 Node 单测 ABI。
 
 ### Runtime SQLite 加密迁移（最小可用）

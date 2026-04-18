@@ -35,8 +35,12 @@ runElectronLogHarness({
   env: context.env,
   timeoutMs,
   onJsonLogLine: tryHandleLine,
-  onProcessExit: (code, finish) => {
-    finish(false, `process exited before verification (code=${code == null ? "null" : String(code)}).`);
+  onProcessExit: (code, signal, finish) => {
+    const sig = signal ? ` signal=${signal}` : "";
+    finish(
+      false,
+      `process exited before verification (code=${code == null ? "null" : String(code)}${sig}).`
+    );
   },
 });
 
