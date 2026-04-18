@@ -55,6 +55,7 @@ If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`
 - On migration failure, runtime keeps plaintext mode for that run and logs `runtime-sqlite-encryption-migrate-failed`.
 - Existing encrypted DB key rotation is available in code via `rotateRuntimeSqliteKey(oldKey, newKey)` (`runtime-sqlite-persistence`).
 - Key rotation + rollback operations are documented in `RUNTIME_SQLITE_KEY_RUNBOOK.md`.
+- Production key governance tip: avoid long-lived plaintext keys directly in env; prefer secret-manager injection with audit/rotation controls. In production, startup logs `runtime-sqlite-key-governance-warning` when key source is direct env.
 
 ### 1) Mock E2E (recommended default)
 

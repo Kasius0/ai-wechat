@@ -148,6 +148,7 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
 - 若迁移失败，当次运行会保留明文模式，并记录 `runtime-sqlite-encryption-migrate-failed` 日志。
 - 已加密库的换钥可用代码接口 `rotateRuntimeSqliteKey(oldKey, newKey)`（`runtime-sqlite-persistence`）。
 - 密钥轮换与回滚操作文档见 `RUNTIME_SQLITE_KEY_RUNBOOK.md`。
+- 生产密钥治理建议：尽量避免长期以明文环境变量直接注入密钥；优先使用具备审计与轮换控制的密钥管理方案。生产环境下若检测到直接 env key 来源，启动日志会记录 `runtime-sqlite-key-governance-warning`。
 
 ### 报错：`ENOENT ... package.json`
 
