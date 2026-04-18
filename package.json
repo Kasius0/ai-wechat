@@ -97,6 +97,7 @@
     "test:wechat-send": "node scripts/wechat-send-template.js",
     "test:wechat-e2e": "node scripts/wechat-e2e.js",
     "test:wechat-e2e:real": "node scripts/wechat-e2e-real.js",
+    "test:desktop-e2e": "node scripts/desktop-e2e.js",
     "wechat-api:dev": "node scripts/mock-wechat-api.js",
     "wechat-api:restart": "node scripts/restart-wechat-api.js",
     "dev:electron": "npm run start",

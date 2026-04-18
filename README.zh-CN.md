@@ -67,6 +67,19 @@ $env:WECHAT_AUTOMATION_API_PREFIX="api/wechat"   # 可选
 npm --prefix F:\AI\project\apps\desktop run test:wechat-e2e:real -- "测试消息"
 ```
 
+### 3）桌面启动 E2E（2B 最小切片）
+
+```powershell
+# 明文 / 默认启动
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e
+
+# 若本地 runtime 库已加密
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e
+```
+
+脚本会检查启动日志中的 `runtime-sqlite-encryption-config`、`runtime-sqlite-ready`、`app-ready`，随后自动退出。
+
 ## 二、常见问题速查
 
 ### 报错：`npm install` / `npm ci` 出现 `EBUSY`、`electron\dist\icudtl.dat`

@@ -79,6 +79,19 @@ $env:WECHAT_AUTOMATION_API_PREFIX="api/wechat"   # optional
 npm --prefix F:\AI\project\apps\desktop run test:wechat-e2e:real -- "测试消息"
 ```
 
+### 3) Desktop startup E2E (minimum 2B slice)
+
+```powershell
+# plaintext / default startup
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e
+
+# if local runtime DB is encrypted
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e
+```
+
+Checks startup logs for `runtime-sqlite-encryption-config`, `runtime-sqlite-ready`, and `app-ready`, then exits automatically.
+
 ## Other Useful Commands
 
 Start mock API only:
