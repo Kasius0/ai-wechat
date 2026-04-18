@@ -9,6 +9,10 @@ This project includes a reusable WeChat automation flow with retry and checks, p
 
 ## Commands
 
+## Release channel (installer)
+
+See `RELEASE.md` for packaging strategy (`electron-builder`), signing policy, and the pre-release gate checklist.
+
 ### 0) ESLint
 
 ```powershell
