@@ -2,6 +2,12 @@ const { migrateRuntimeSqliteSchema, readUserVersion, RUNTIME_SQLITE_SCHEMA_VERSI
 
 /** @type {InstanceType<typeof import("better-sqlite3")> | null} */
 let db = null;
+let encryptionStatus = {
+  enabled: false,
+  mode: "off",
+  keySource: "none",
+  reason: "encryption disabled",
+};
 
 let upsertStmt = null;
 let selectStmt = null;
@@ -45,7 +51,57 @@ function executeUpsert(sessionId, store) {
   });
 }
 
-function initRuntimeSqlitePersistence(dbPath) {
+/**
+ * @typedef {{
+ *   enabled?: boolean,
+ *   mode?: "off" | "sqlcipher",
+ *   key?: string,
+ *   keySource?: string,
+ * }} RuntimeSqliteEncryptionConfig
+ */
+
+/**
+ * @typedef {{ encryption?: RuntimeSqliteEncryptionConfig }} RuntimeSqlitePersistenceOptions
+ */
+
+/**
+ * Resolve effective encryption status for observability.
+ * Actual SQLCipher wiring is intentionally deferred; this is a compatibility skeleton.
+ * @param {RuntimeSqlitePersistenceOptions | undefined} options
+ */
+function resolveEncryptionStatus(options) {
+  const cfg = options?.encryption || {};
+  const enabled = cfg.enabled === true;
+  const mode = cfg.mode || "off";
+  const keySource = cfg.keySource || (cfg.key ? "inline" : "none");
+  if (!enabled) {
+    return { enabled: false, mode: "off", keySource: "none", reason: "encryption disabled" };
+  }
+  if (mode !== "sqlcipher") {
+    return {
+      enabled: false,
+      mode,
+      keySource,
+      reason: "unsupported encryption mode; running plaintext",
+    };
+  }
+  if (!cfg.key || !String(cfg.key).trim()) {
+    return {
+      enabled: false,
+      mode,
+      keySource,
+      reason: "missing encryption key; running plaintext",
+    };
+  }
+  return {
+    enabled: false,
+    mode,
+    keySource,
+    reason: "sqlcipher not wired yet; running plaintext",
+  };
+}
+
+function initRuntimeSqlitePersistence(dbPath, options = undefined) {
   if (db) {
     return;
   }
@@ -54,6 +110,7 @@ function initRuntimeSqlitePersistence(dbPath) {
   }
   const BetterSqlite3 = require("better-sqlite3");
   db = new BetterSqlite3(dbPath);
+  encryptionStatus = resolveEncryptionStatus(options);
   db.pragma("journal_mode = WAL");
   migrateRuntimeSqliteSchema(db);
   upsertStmt = db.prepare(`
@@ -75,6 +132,10 @@ function initRuntimeSqlitePersistence(dbPath) {
 
 function isPersistenceEnabled() {
   return db != null;
+}
+
+function getRuntimeSqliteEncryptionStatus() {
+  return { ...encryptionStatus };
 }
 
 /** @returns {number | null} Current PRAGMA user_version, or null if DB not open. */
@@ -209,6 +270,12 @@ function closeRuntimeSqlitePersistence() {
     }
   }
   db = null;
+  encryptionStatus = {
+    enabled: false,
+    mode: "off",
+    keySource: "none",
+    reason: "encryption disabled",
+  };
   upsertStmt = null;
   selectStmt = null;
   deleteAllStmt = null;
@@ -220,6 +287,7 @@ function closeRuntimeSqlitePersistence() {
 module.exports = {
   initRuntimeSqlitePersistence,
   isPersistenceEnabled,
+  getRuntimeSqliteEncryptionStatus,
   getRuntimeSqliteSchemaVersion,
   RUNTIME_SQLITE_SCHEMA_VERSION,
   loadSessionRow,

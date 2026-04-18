@@ -4,6 +4,7 @@ const {
   initRuntimeSqlitePersistence,
   closeRuntimeSqlitePersistence,
   isPersistenceEnabled,
+  getRuntimeSqliteEncryptionStatus,
   getRuntimeSqliteSchemaVersion,
   RUNTIME_SQLITE_SCHEMA_VERSION,
   loadSessionRow,
@@ -26,6 +27,29 @@ describe("runtime-sqlite-persistence", () => {
 
   test("isPersistenceEnabled after init", () => {
     assert.equal(isPersistenceEnabled(), true);
+  });
+
+  test("encryption status defaults to disabled plaintext", () => {
+    const s = getRuntimeSqliteEncryptionStatus();
+    assert.equal(s.enabled, false);
+    assert.equal(s.mode, "off");
+    assert.match(s.reason, /disabled/i);
+  });
+
+  test("encryption skeleton keeps plaintext when config is incomplete", () => {
+    closeRuntimeSqlitePersistence();
+    initRuntimeSqlitePersistence(":memory:", {
+      encryption: {
+        enabled: true,
+        mode: "sqlcipher",
+        keySource: "env:RUNTIME_SQLITE_KEY",
+      },
+    });
+    const s = getRuntimeSqliteEncryptionStatus();
+    assert.equal(s.enabled, false);
+    assert.equal(s.mode, "sqlcipher");
+    assert.equal(s.keySource, "env:RUNTIME_SQLITE_KEY");
+    assert.match(s.reason, /missing encryption key|running plaintext/i);
   });
 
   test("init applies migrations (user_version)", () => {
