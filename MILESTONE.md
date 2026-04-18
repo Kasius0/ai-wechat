@@ -82,9 +82,9 @@ If a new change breaks runtime startup or E2E:
 
 ### Week C (developer workflow)
 
-- [ ] Triage `npm audit` findings by severity.
-- [ ] Decide on `husky` / `lint-staged` adoption.
-- [ ] Add contribution guideline snippet for new script architecture (`scripts/lib/*` reuse).
+- [x] Triage `npm audit` findings by severity.
+- [x] Decide on `husky` / `lint-staged` adoption.
+- [x] Add contribution guideline snippet for new script architecture (`scripts/lib/*` reuse).
 
 ### Week D (release channel)
 
