@@ -110,6 +110,15 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:renderer
 
 `test:desktop-e2e:renderer` runs from renderer context via preload APIs (`window.runtime.*`, `window.wechat.listCaptures`) and expects `desktop-e2e-renderer-flow-pass`.
 
+Real UI click/type flow check:
+
+```powershell
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"   # optional when encrypted
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
+```
+
+`test:desktop-e2e:ui` drives real renderer controls (`click`/`type`) against the loaded page, then expects `desktop-e2e-ui-pass`.
+
 ## Other Useful Commands
 
 Start mock API only:

@@ -8,8 +8,8 @@ const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
 const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
 const mode = String(process.argv[2] || "startup").trim().toLowerCase();
 
-if (!["startup", "flow", "renderer"].includes(mode)) {
-  console.error("[desktop-e2e] usage: node scripts/desktop-e2e.js <startup|flow|renderer>");
+if (!["startup", "flow", "renderer", "ui"].includes(mode)) {
+  console.error("[desktop-e2e] usage: node scripts/desktop-e2e.js <startup|flow|renderer|ui>");
   process.exit(1);
 }
 
@@ -47,6 +47,9 @@ if (mode === "flow") {
 if (mode === "renderer") {
   env.DESKTOP_E2E_RENDERER_FLOW = "1";
 }
+if (mode === "ui") {
+  env.DESKTOP_E2E_UI_FLOW = "1";
+}
 
 const child = spawn("npm", ["run", "start"], {
   shell: true,
@@ -61,6 +64,7 @@ const seen = {
   appReady: false,
   flowPass: false,
   rendererPass: false,
+  uiPass: false,
 };
 
 function finish(ok, message) {
@@ -118,12 +122,19 @@ function onLogLine(rawLine) {
   if (event === "desktop-e2e-renderer-flow-pass") {
     seen.rendererPass = true;
   }
+  if (event === "desktop-e2e-ui-pass") {
+    seen.uiPass = true;
+  }
   if (event === "desktop-e2e-flow-fail") {
     finish(false, payload?.reason || payload?.message || "desktop runtime flow failed.");
     return;
   }
   if (event === "desktop-e2e-renderer-flow-fail") {
     finish(false, payload?.reason || payload?.message || "desktop renderer flow failed.");
+    return;
+  }
+  if (event === "desktop-e2e-ui-fail") {
+    finish(false, payload?.reason || payload?.message || "desktop UI flow failed.");
     return;
   }
 
@@ -137,6 +148,10 @@ function onLogLine(rawLine) {
   }
   if (mode === "renderer" && seen.encryptionConfig && seen.sqliteReady && seen.appReady && seen.rendererPass) {
     finish(true, "renderer flow emitted startup signals and desktop-e2e-renderer-flow-pass.");
+    return;
+  }
+  if (mode === "ui" && seen.encryptionConfig && seen.sqliteReady && seen.appReady && seen.uiPass) {
+    finish(true, "ui flow emitted startup signals and desktop-e2e-ui-pass.");
   }
 }
 

@@ -70,3 +70,5 @@ jobs:
         run: xvfb-run -a npm run test:desktop-e2e:flow
       - name: Desktop E2E renderer flow
         run: xvfb-run -a npm run test:desktop-e2e:renderer
+      - name: Desktop E2E UI click/type flow
+        run: xvfb-run -a npm run test:desktop-e2e:ui

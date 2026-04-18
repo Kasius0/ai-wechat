@@ -98,6 +98,15 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:renderer
 
 `test:desktop-e2e:renderer` 会在渲染器上下文通过 preload API（`window.runtime.*`、`window.wechat.listCaptures`）执行流程，并要求出现 `desktop-e2e-renderer-flow-pass` 日志。
 
+真实 UI 点击/输入流程验收：
+
+```powershell
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"   # 加密库时需要
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
+```
+
+`test:desktop-e2e:ui` 会对已加载页面执行真实控件动作（`click` / `type`），并要求出现 `desktop-e2e-ui-pass` 日志。
+
 ## 二、常见问题速查
 
 ### 报错：`npm install` / `npm ci` 出现 `EBUSY`、`electron\dist\icudtl.dat`
