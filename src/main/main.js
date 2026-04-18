@@ -9,7 +9,11 @@ const {
   getRuntimeSqliteEncryptionStatus,
   migrateRuntimeSqliteToSqlcipher,
 } = require("./modules/runtime/runtime-sqlite-persistence");
-const { dropRuntimeSessionForWebContents } = require("./modules/runtime/session-state-machine");
+const {
+  dropRuntimeSessionForWebContents,
+  dispatchRuntimeEvent,
+  getSessionRuntimeState,
+} = require("./modules/runtime/session-state-machine");
 
 let mainWindow = null;
 
@@ -37,6 +41,61 @@ function createMainWindow() {
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+  });
+}
+
+function runDesktopE2EFlow() {
+  const sessionId = String(process.env.DESKTOP_E2E_SESSION || "__desktop_e2e__").trim() || "__desktop_e2e__";
+  const steps = ["reset", "session_start", "wechat_normal", "trigger_send", "send_ok", "cooldown_done"];
+  logMain({
+    module: "main",
+    event: "desktop-e2e-flow-start",
+    sessionId,
+    steps,
+  });
+  for (const event of steps) {
+    const traceId = `desktop-e2e-${event}-${Date.now()}`;
+    const result = dispatchRuntimeEvent(event, {
+      sessionId,
+      traceId,
+    });
+    if (!result?.ok) {
+      logMain({
+        module: "main",
+        event: "desktop-e2e-flow-fail",
+        sessionId,
+        step: event,
+        result,
+      });
+      return;
+    }
+    logMain({
+      module: "main",
+      event: "desktop-e2e-flow-step",
+      sessionId,
+      step: event,
+      state: result?.data?.state,
+      allowedEvents: result?.data?.allowedEvents,
+    });
+  }
+  const snapshot = getSessionRuntimeState(sessionId);
+  if (snapshot?.data?.state !== "idle") {
+    logMain({
+      module: "main",
+      event: "desktop-e2e-flow-fail",
+      sessionId,
+      reason: "final state mismatch",
+      expectedState: "idle",
+      snapshot,
+    });
+    return;
+  }
+  logMain({
+    module: "main",
+    event: "desktop-e2e-flow-pass",
+    sessionId,
+    state: snapshot?.data?.state,
+    historySize: Array.isArray(snapshot?.data?.history) ? snapshot.data.history.length : 0,
   });
 }
 
@@ -144,6 +203,13 @@ app.whenReady().then(() => {
     logFilePath: LOG_FILE_PATH,
     pid: process.pid,
   });
+
+  if (/^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_FLOW || ""))) {
+    runDesktopE2EFlow();
+    app.quit();
+    return;
+  }
+
   createMainWindow();
 
   app.on("activate", () => {
