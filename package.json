@@ -21,7 +21,6 @@
     "define-properties": "^1.2.1",
     "detect-libc": "^2.1.2",
     "detect-node": "^2.1.0",
-    "electron": "^35.7.5",
     "end-of-stream": "^1.4.5",
     "env-paths": "^2.2.1",
     "es-define-property": "^1.0.1",
@@ -85,6 +84,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.16.0",
+    "electron": "^35.7.5",
     "electron-builder": "^26.8.1",
     "eslint": "^9.16.0",
     "globals": "^15.14.0"
