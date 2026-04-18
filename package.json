@@ -99,6 +99,7 @@
     "test:wechat-e2e:real": "node scripts/wechat-e2e-real.js",
     "test:desktop-e2e": "node scripts/desktop-e2e.js startup",
     "test:desktop-e2e:flow": "node scripts/desktop-e2e.js flow",
+    "test:desktop-e2e:renderer": "node scripts/desktop-e2e.js renderer",
     "wechat-api:dev": "node scripts/mock-wechat-api.js",
     "wechat-api:restart": "node scripts/restart-wechat-api.js",
     "dev:electron": "npm run start",
