@@ -361,6 +361,18 @@ Select-String -LiteralPath 'F:\AI\project\runtime\logs\desktop-main.log' -Patter
   - 非法跳转时主日志 **`runtime:wechat-single-step`** / **`dispatch-mismatch`**（与 quick-send 桥接类似）。
 - **单元测试：** `npm --prefix F:\AI\project\apps\desktop test`（`scripts/run-unit-tests.js` 自动跑 `test/*.test.js`）；含 `get-runtime-highlight-block`（Dev 输出区摘要纯函数）、`enrich-wechat-ipc-result`、`ipc-define-handler-runtime`、`session-state-machine`、`quick-send-runtime-bridge`、`single-step-wechat-runtime-sync`。
 - **CI：** 仓库根目录 `.github/workflows/desktop-ci.yml`，在 `project/apps/desktop` 下执行 **`npm ci` → `npm run lint` → `npm test`**（`push`/`pull_request` 且变更命中 desktop 或该 workflow 时触发）；Node 版本与 **`project/apps/desktop/.nvmrc`**（当前为 20）及 **`package.json` 的 `engines.node`**（`>=20`）一致。
+- **CI 失败排障（desktop E2E）：**
+  - 在失败的 workflow run 中打开 `desktop-e2e` job。
+  - 下载失败时自动上传的 artifact：`desktop-runtime-logs-<run_id>`。
+  - 优先查看：
+    - `runtime/logs/desktop-main.log`
+    - `runtime/logs/desktop-main.<timestamp>.log`
+  - 先按事件定位：
+    - `runtime-sqlite-init-failed`
+    - `desktop-e2e-flow-fail`
+    - `desktop-e2e-renderer-flow-fail`
+    - `desktop-e2e-ui-fail`
+  - CI 已对每条 desktop E2E 切片做 1 次重试；若重试后仍失败，应按真实回归处理。
 - **Dev 输出区：** 当 IPC 返回 JSON 且含 **`data.runtime`**（对象）时，主区域仍为完整 JSON，下方增加紫色边框摘要块；**`runtime:state` / `runtime:event`** 等返回中带 **`state` + `allowedEvents`**（且无 `data.runtime`、非 quick-send 的 `data.action`）时，下方显示 **「运行时快照」**。摘要逻辑为纯函数 **`getRuntimeHighlightBlock`**：`src/renderer/get-runtime-highlight-block.js`（先于 `renderer.js` 加载），`setOutput` 见 `renderer.js`，样式见 `renderer.css`；单测 `test/get-runtime-highlight-block.test.js`。
 
 ## 九、已知边界与后续方向（未纳入当前交付）

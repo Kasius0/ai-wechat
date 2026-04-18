@@ -299,6 +299,22 @@ Pure logic lives in `src/renderer/get-runtime-highlight-block.js` (loaded before
 
 GitHub Actions workflow: **`.github/workflows/desktop-ci.yml`** (repo root). On push/PR when files under `project/apps/desktop/` change, it runs **`npm ci` → `npm run lint` → `npm test`** in that directory (Ubuntu). Node version follows **`project/apps/desktop/.nvmrc`** (currently **20**), matching `package.json` **`engines.node`** (`>=20`).
 
+### CI troubleshooting (desktop E2E)
+
+If `desktop-e2e` fails in CI:
+
+- Open the failed workflow run, then open job `desktop-e2e`.
+- Download artifact `desktop-runtime-logs-<run_id>` (uploaded on failure).
+- Inspect:
+  - `runtime/logs/desktop-main.log`
+  - `runtime/logs/desktop-main.<timestamp>.log`
+- Match failure events first:
+  - `runtime-sqlite-init-failed`
+  - `desktop-e2e-flow-fail`
+  - `desktop-e2e-renderer-flow-fail`
+  - `desktop-e2e-ui-fail`
+- If failure is transient, workflow already retries each E2E slice once; treat repeated failures as real regressions.
+
 ### Dev output: runtime highlight panel
 
 When the returned JSON includes **`data.runtime`** as an object, the renderer shows the full response in the main `<pre>` and adds a highlighted block below (purple border), labeled **`data.runtime`**.
