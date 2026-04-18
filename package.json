@@ -102,6 +102,8 @@
     "dev:electron": "npm run start",
     "start:encrypted": "node scripts/start-encrypted.js",
     "start:migrate": "node scripts/start-migrate.js",
+    "verify:encrypted-start": "node scripts/verify-runtime-sqlite-startup.js encrypted-start",
+    "verify:wrong-key-fail": "node scripts/verify-runtime-sqlite-startup.js wrong-key-fail",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3"
   },
   "keywords": [],
