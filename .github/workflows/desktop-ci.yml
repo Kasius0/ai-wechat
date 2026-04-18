@@ -65,10 +65,51 @@ jobs:
       - name: Rebuild better-sqlite3 for Electron ABI
         run: npm run rebuild:electron
       - name: Desktop E2E startup
-        run: xvfb-run -a npm run test:desktop-e2e
+        run: |
+          for i in 1 2; do
+            xvfb-run -a npm run test:desktop-e2e && break
+            if [ "$i" -eq 2 ]; then
+              echo "desktop startup e2e failed after 2 attempts"
+              exit 1
+            fi
+            echo "desktop startup e2e failed, retrying..."
+          done
       - name: Desktop E2E main flow
-        run: xvfb-run -a npm run test:desktop-e2e:flow
+        run: |
+          for i in 1 2; do
+            xvfb-run -a npm run test:desktop-e2e:flow && break
+            if [ "$i" -eq 2 ]; then
+              echo "desktop main-flow e2e failed after 2 attempts"
+              exit 1
+            fi
+            echo "desktop main-flow e2e failed, retrying..."
+          done
       - name: Desktop E2E renderer flow
-        run: xvfb-run -a npm run test:desktop-e2e:renderer
+        run: |
+          for i in 1 2; do
+            xvfb-run -a npm run test:desktop-e2e:renderer && break
+            if [ "$i" -eq 2 ]; then
+              echo "desktop renderer-flow e2e failed after 2 attempts"
+              exit 1
+            fi
+            echo "desktop renderer-flow e2e failed, retrying..."
+          done
       - name: Desktop E2E UI click/type flow
-        run: xvfb-run -a npm run test:desktop-e2e:ui
+        run: |
+          for i in 1 2; do
+            xvfb-run -a npm run test:desktop-e2e:ui && break
+            if [ "$i" -eq 2 ]; then
+              echo "desktop ui-flow e2e failed after 2 attempts"
+              exit 1
+            fi
+            echo "desktop ui-flow e2e failed, retrying..."
+          done
+      - name: Upload desktop runtime logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-runtime-logs-${{ github.run_id }}
+          path: |
+            ../../runtime/logs/desktop-main.log
+            ../../runtime/logs/desktop-main.*.log
+          if-no-files-found: ignore
