@@ -41,6 +41,12 @@ npm --prefix F:\AI\project\apps\desktop run start:encrypted
 # 一次性加密迁移启动：
 $env:RUNTIME_SQLITE_MIGRATE_KEY="REPLACE_WITH_STRONG_KEY"
 npm --prefix F:\AI\project\apps\desktop run start:migrate
+# 启动验收（要求库已加密且 key 正确）：
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run verify:encrypted-start
+# wrong-key 失败信号验收（故意设置错误 key）：
+$env:RUNTIME_SQLITE_KEY="INTENTIONALLY_WRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run verify:wrong-key-fail
 ```
 
 配置：`eslint.config.js`（flat config）；`src/main` / `preload` / `scripts` / `test` 为 Node，`src/renderer` 为浏览器脚本。CI 在单元测试前执行 `npm run lint`。根目录 **`.editorconfig`**；**`.vscode/`** 推荐安装 ESLint、EditorConfig 扩展，并启用 flat config（`eslint.useFlatConfig`）。

@@ -28,6 +28,12 @@ npm --prefix F:\AI\project\apps\desktop run start:encrypted
 # one-time encryption migration startup:
 $env:RUNTIME_SQLITE_MIGRATE_KEY="REPLACE_WITH_STRONG_KEY"
 npm --prefix F:\AI\project\apps\desktop run start:migrate
+# startup verification (expects encrypted DB + key):
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run verify:encrypted-start
+# wrong-key failure verification (intentionally set a wrong key):
+$env:RUNTIME_SQLITE_KEY="INTENTIONALLY_WRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run verify:wrong-key-fail
 ```
 
 Flat config: `eslint.config.js`. CI runs `npm run lint` before unit tests. Repo also includes **`.editorconfig`** and **`.vscode/`** (recommended extensions: ESLint, EditorConfig; `eslint.useFlatConfig` enabled).
