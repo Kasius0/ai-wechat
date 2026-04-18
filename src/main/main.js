@@ -321,6 +321,21 @@ app.whenReady().then(() => {
         ? "migration mode enabled; disable RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER after one successful run"
         : "normal startup mode",
   });
+  if (
+    runtimeEncryptionEnabled &&
+    runtimeEncryptionConfig.keySource === "env:RUNTIME_SQLITE_KEY" &&
+    String(process.env.NODE_ENV || "").trim().toLowerCase() === "production"
+  ) {
+    logMain({
+      module: "main",
+      event: "runtime-sqlite-key-governance-warning",
+      dbPath: runtimeDbPath,
+      severity: "warning",
+      reason: "production runtime key is sourced directly from process env",
+      advisory:
+        "for production, prefer secret manager injection with rotation controls instead of long-lived plain env values",
+    });
+  }
 
   try {
     initRuntimeSqlitePersistence(runtimeDbPath, {

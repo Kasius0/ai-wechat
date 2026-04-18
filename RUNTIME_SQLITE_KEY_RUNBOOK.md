@@ -57,4 +57,9 @@ This runbook covers **SQLCipher key rotation** and **rollback** for the runtime 
   - `RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER`
 - Keep rotation key handling out of shell history when possible.
 - Prefer a short maintenance window with explicit backup timestamp.
+- Production key governance:
+  - Avoid long-lived plaintext key values directly in process env when possible.
+  - Prefer secret manager based injection with access control and audit trail.
+  - Rotate keys on a defined cadence and after security incidents.
+  - Startup now emits `runtime-sqlite-key-governance-warning` in production when key source is direct env.
 
