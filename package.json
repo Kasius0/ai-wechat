@@ -6,6 +6,7 @@
   "dependencies": {
     "balanced-match": "^1.0.2",
     "better-sqlite3": "^12.9.0",
+    "better-sqlite3-multiple-ciphers": "^11.10.0",
     "boolean": "^3.2.0",
     "brace-expansion": "^1.1.14",
     "buffer-crc32": "^0.2.13",
