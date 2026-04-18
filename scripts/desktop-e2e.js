@@ -2,47 +2,23 @@
 "use strict";
 
 const { runElectronLogHarness } = require("./lib/electron-log-harness");
-const {
-  listDesktopE2EModes,
-  getDesktopE2EModeConfig,
-  createDesktopE2ESeenState,
-} = require("./lib/desktop-e2e-mode-config");
-const { buildDesktopE2EEnv } = require("./lib/desktop-e2e-env");
-const { evaluateDesktopE2ELog } = require("./lib/desktop-e2e-log-evaluator");
+const { resolveDesktopE2EContext, createDesktopE2ELogHandler } = require("./lib/desktop-e2e-core");
 
 const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
 const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
 const mode = String(process.argv[2] || "startup").trim().toLowerCase();
-const modeConfig = getDesktopE2EModeConfig(mode);
+const context = resolveDesktopE2EContext({ mode, runtimeKey, baseEnv: process.env });
 
-if (!modeConfig) {
-  const usageModes = listDesktopE2EModes().join("|");
+if (!context.ok) {
+  const usageModes = context.usageModes.join("|");
   console.error(`[desktop-e2e] usage: node scripts/desktop-e2e.js <${usageModes}>`);
   process.exit(1);
 }
-
-const env = buildDesktopE2EEnv(process.env, { runtimeKey, modeConfig });
-
-const seen = createDesktopE2ESeenState();
-
-function onLogLine(payload, finish) {
-  const result = evaluateDesktopE2ELog(payload, {
-    seen,
-    modeConfig,
-    runtimeKey,
-  });
-  if (result.status === "fail") {
-    finish(false, result.message);
-    return;
-  }
-  if (result.status === "pass") {
-    finish(true, result.message);
-  }
-}
+const onLogLine = createDesktopE2ELogHandler(context);
 
 runElectronLogHarness({
   name: "desktop-e2e",
-  env,
+  env: context.env,
   timeoutMs,
   onJsonLogLine: onLogLine,
   onProcessExit: (code, finish) => {
