@@ -76,9 +76,9 @@ If a new change breaks runtime startup or E2E:
 
 ### Week B (security and key governance)
 
-- [ ] Define production key source policy (secret manager target).
-- [ ] Document rotation cadence and ownership.
-- [ ] Add explicit "do not use plain env in production" note to runbook.
+- [x] Define production key source policy (secret manager target).
+- [x] Document rotation cadence and ownership.
+- [x] Add explicit "do not use plain env in production" note to runbook.
 
 ### Week C (developer workflow)
 
