@@ -119,6 +119,25 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
 
 `test:desktop-e2e:ui` drives real renderer controls (`click`/`type`) against the loaded page, then expects `desktop-e2e-ui-pass`.
 
+### Script architecture (shared helpers)
+
+To keep script behavior consistent, new desktop scripts should reuse shared helpers in `scripts/lib/`:
+
+- `electron-log-harness.js`: process lifecycle + JSON log stream + timeout + cleanup.
+- `desktop-e2e-core.js`: mode resolution, env building, and desktop E2E log handler wiring.
+- `desktop-e2e-mode-config.js`: declarative desktop E2E mode map.
+- `desktop-e2e-env.js`: desktop E2E env construction.
+- `desktop-e2e-log-evaluator.js`: pure pass/fail/continue evaluation for desktop E2E logs.
+- `runtime-sqlite-verify-core.js`: verify startup mode resolution + env + handler wiring.
+- `runtime-sqlite-verify-evaluator.js`: pure pass/fail/continue evaluation for verify logs.
+- `script-cli.js`: shared CLI arg/env parsing for entry scripts.
+
+Entry scripts should stay thin:
+
+- parse CLI/env via `script-cli.js`
+- build context via core module
+- run with `electron-log-harness.js`
+
 ## Other Useful Commands
 
 Start mock API only:

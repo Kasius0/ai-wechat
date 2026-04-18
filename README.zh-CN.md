@@ -107,6 +107,25 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
 
 `test:desktop-e2e:ui` 会对已加载页面执行真实控件动作（`click` / `type`），并要求出现 `desktop-e2e-ui-pass` 日志。
 
+### 脚本架构（共享 helper）
+
+为避免脚本实现分散，新增桌面脚本请优先复用 `scripts/lib/` 下的公共模块：
+
+- `electron-log-harness.js`：进程生命周期、JSON 日志流、超时与清理。
+- `desktop-e2e-core.js`：desktop E2E 的模式解析、环境构建、日志处理装配。
+- `desktop-e2e-mode-config.js`：声明式 mode 配置。
+- `desktop-e2e-env.js`：desktop E2E 环境变量构建。
+- `desktop-e2e-log-evaluator.js`：desktop E2E 日志纯函数判定（pass/fail/continue）。
+- `runtime-sqlite-verify-core.js`：runtime sqlite 启动验收的模式/环境/处理装配。
+- `runtime-sqlite-verify-evaluator.js`：verify 日志纯函数判定（pass/fail/continue）。
+- `script-cli.js`：脚本入口公共 CLI 参数与环境变量解析。
+
+入口脚本应保持“薄层”：
+
+- 通过 `script-cli.js` 解析参数
+- 通过 core 模块组装上下文
+- 统一交给 `electron-log-harness.js` 执行
+
 ## 二、常见问题速查
 
 ### 报错：`npm install` / `npm ci` 出现 `EBUSY`、`electron\dist\icudtl.dat`
