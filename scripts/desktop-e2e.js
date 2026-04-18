@@ -3,14 +3,15 @@
 
 const { runElectronLogHarness } = require("./lib/electron-log-harness");
 const { resolveDesktopE2EContext, createDesktopE2ELogHandler } = require("./lib/desktop-e2e-core");
+const { readPositionalArg, readEnvString, readEnvNumber, formatModesUsage } = require("./lib/script-cli");
 
-const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
-const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
-const mode = String(process.argv[2] || "startup").trim().toLowerCase();
+const timeoutMs = readEnvNumber(process.env, "DESKTOP_E2E_TIMEOUT_MS", 30000);
+const runtimeKey = readEnvString(process.env, "RUNTIME_SQLITE_KEY", "");
+const mode = readPositionalArg(process.argv, 2, "startup").toLowerCase();
 const context = resolveDesktopE2EContext({ mode, runtimeKey, baseEnv: process.env });
 
 if (!context.ok) {
-  const usageModes = context.usageModes.join("|");
+  const usageModes = formatModesUsage(context.usageModes);
   console.error(`[desktop-e2e] usage: node scripts/desktop-e2e.js <${usageModes}>`);
   process.exit(1);
 }

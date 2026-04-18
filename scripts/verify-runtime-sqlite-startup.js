@@ -7,10 +7,11 @@ const {
   resolveRuntimeSqliteVerifyContext,
   createRuntimeSqliteVerifyLogHandler,
 } = require("./lib/runtime-sqlite-verify-core");
+const { readPositionalArg, readEnvString, readEnvNumber, formatModesUsage } = require("./lib/script-cli");
 
-const mode = String(process.argv[2] || "").trim();
-const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
-const timeoutMs = Number(process.env.RUNTIME_SQLITE_VERIFY_TIMEOUT_MS || 30000);
+const mode = readPositionalArg(process.argv, 2, "");
+const runtimeKey = readEnvString(process.env, "RUNTIME_SQLITE_KEY", "");
+const timeoutMs = readEnvNumber(process.env, "RUNTIME_SQLITE_VERIFY_TIMEOUT_MS", 30000);
 const context = resolveRuntimeSqliteVerifyContext({
   mode,
   runtimeKey,
@@ -19,7 +20,7 @@ const context = resolveRuntimeSqliteVerifyContext({
 
 if (!context.ok && context.message === "invalid verify mode") {
   console.error(
-    `[verify-runtime-sqlite-startup] usage: node scripts/verify-runtime-sqlite-startup.js <${VERIFY_MODES.join("|")}>`
+    `[verify-runtime-sqlite-startup] usage: node scripts/verify-runtime-sqlite-startup.js <${formatModesUsage(VERIFY_MODES)}>`
   );
   process.exit(1);
 }
