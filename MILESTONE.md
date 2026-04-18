@@ -88,9 +88,9 @@ If a new change breaks runtime startup or E2E:
 
 ### Week D (release channel)
 
-- [ ] Define installer strategy (`electron-builder` etc.).
-- [ ] Define signing requirements and release channel policy.
-- [ ] Add pre-release gate checklist (lint/test/e2e/verify).
+- [x] Define installer strategy (`electron-builder` etc.). See `RELEASE.md`.
+- [x] Define signing requirements and release channel policy. See `RELEASE.md`.
+- [x] Add pre-release gate checklist (lint/test/e2e/verify). See `RELEASE.md`.
 
 ## Ownership and updates
 

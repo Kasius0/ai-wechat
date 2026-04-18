@@ -85,6 +85,7 @@
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "@eslint/js": "^9.16.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.16.0",
     "globals": "^15.14.0"
   },
@@ -92,6 +93,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win nsis",
     "test": "node scripts/run-unit-tests.js",
     "test:wechat-title": "node scripts/read-wechat-title.js",
     "test:wechat-send": "node scripts/wechat-send-template.js",
@@ -109,6 +113,33 @@
     "verify:encrypted-start": "node scripts/verify-runtime-sqlite-startup.js encrypted-start",
     "verify:wrong-key-fail": "node scripts/verify-runtime-sqlite-startup.js wrong-key-fail",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3"
+  },
+  "build": {
+    "appId": "com.kasius.wechat-automation.desktop",
+    "productName": "WeChat Automation Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": true,
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "keywords": [],
   "author": "",

@@ -22,6 +22,10 @@ $env:WECHAT_AUTOMATION_BASE_URL="http://127.0.0.1:8787"; $env:WECHAT_AUTOMATION_
 
 ## 一、最常用命令
 
+## 发布与安装包（release channel）
+
+发布策略、签名要求与发版前 gate 清单见 `RELEASE.md`（基于 `electron-builder` 的最小可用方案）。
+
 ### 0）代码检查（ESLint）
 
 ```powershell
