@@ -48,6 +48,7 @@ If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`
 - Production tip: enable migration flags only for a controlled one-time window; after success, remove `RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER` (and temporary migrate key env) to avoid repeated migration attempts.
 - On migration failure, runtime keeps plaintext mode for that run and logs `runtime-sqlite-encryption-migrate-failed`.
 - Existing encrypted DB key rotation is available in code via `rotateRuntimeSqliteKey(oldKey, newKey)` (`runtime-sqlite-persistence`).
+- Key rotation + rollback operations are documented in `RUNTIME_SQLITE_KEY_RUNBOOK.md`.
 
 ### 1) Mock E2E (recommended default)
 

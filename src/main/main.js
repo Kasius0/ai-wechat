@@ -53,6 +53,27 @@ app.whenReady().then(() => {
   const runtimeMigrateKey = String(
     process.env.RUNTIME_SQLITE_MIGRATE_KEY || process.env.RUNTIME_SQLITE_KEY || ""
   );
+  const runtimeEncryptionConfig = {
+    enabled: runtimeEncryptionEnabled,
+    mode: runtimeEncryptionMode,
+    keySource: runtimeEncryptionKey ? "env:RUNTIME_SQLITE_KEY" : "none",
+    migrationRequested: runtimeMigrateToSqlcipher,
+    migrationKeySource: process.env.RUNTIME_SQLITE_MIGRATE_KEY
+      ? "env:RUNTIME_SQLITE_MIGRATE_KEY"
+      : (runtimeEncryptionKey ? "env:RUNTIME_SQLITE_KEY" : "none"),
+  };
+
+  logMain({
+    module: "main",
+    event: "runtime-sqlite-encryption-config",
+    dbPath: runtimeDbPath,
+    config: runtimeEncryptionConfig,
+    advisory:
+      runtimeMigrateToSqlcipher
+        ? "migration mode enabled; disable RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER after one successful run"
+        : "normal startup mode",
+  });
+
   try {
     initRuntimeSqlitePersistence(runtimeDbPath, {
       encryption: {
@@ -110,6 +131,8 @@ app.whenReady().then(() => {
     logMain({
       module: "main",
       event: "runtime-sqlite-init-failed",
+      dbPath: runtimeDbPath,
+      config: runtimeEncryptionConfig,
       message: error?.message || String(error),
       name: error?.name,
     });

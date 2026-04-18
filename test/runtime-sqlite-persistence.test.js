@@ -153,6 +153,39 @@ describe("runtime-sqlite-persistence", () => {
     }
   });
 
+  test("opening encrypted db with wrong key fails with stable init error prefix", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "runtime-sqlcipher-wrong-key-"));
+    const dbPath = path.join(tmpDir, "runtime.db");
+    try {
+      closeRuntimeSqlitePersistence();
+      initRuntimeSqlitePersistence(dbPath);
+      persistSession("s-encrypted", {
+        state: "idle",
+        lastTraceId: null,
+        lastError: null,
+        history: [],
+      });
+      flushAllPendingWrites();
+      migrateRuntimeSqliteToSqlcipher("correct-key");
+      closeRuntimeSqlitePersistence();
+
+      assert.throws(
+        () => initRuntimeSqlitePersistence(dbPath, {
+          encryption: {
+            enabled: true,
+            mode: "sqlcipher",
+            key: "wrong-key",
+            keySource: "inline",
+          },
+        }),
+        /runtime sqlite init failed:/i
+      );
+    } finally {
+      closeRuntimeSqlitePersistence();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   test("init applies migrations (user_version)", () => {
     assert.equal(getRuntimeSqliteSchemaVersion(), RUNTIME_SQLITE_SCHEMA_VERSION);
   });
