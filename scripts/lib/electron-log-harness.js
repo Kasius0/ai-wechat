@@ -82,6 +82,8 @@ function runElectronLogHarness(options) {
   });
 
   let buffer = "";
+  /** Last bytes of stderr for post-mortem (Chromium/Electron errors rarely use stdout JSON). */
+  let stderrTail = "";
   let settled = false;
 
   function finish(ok, message) {
@@ -98,6 +100,9 @@ function runElectronLogHarness(options) {
         return;
       }
       console.error(`${prefix} FAIL: ${message}`);
+      if (stderrTail.trim()) {
+        console.error(`${prefix} stderr (tail):\n${stderrTail.trimEnd()}`);
+      }
       process.exit(1);
     });
   }
@@ -129,17 +134,25 @@ function runElectronLogHarness(options) {
   }
 
   child.stdout.on("data", onChunk);
-  child.stderr.on("data", onChunk);
+  child.stderr.on("data", (chunk) => {
+    const s = String(chunk);
+    stderrTail = (stderrTail + s).slice(-12000);
+    onChunk(chunk);
+  });
   child.on("error", (error) => finish(false, error?.message || String(error)));
-  child.on("exit", (code) => {
+  child.on("exit", (code, signal) => {
     if (settled) {
       return;
     }
     if (typeof onProcessExit === "function") {
-      onProcessExit(code, finish);
+      onProcessExit(code, signal, finish);
       return;
     }
-    finish(false, `process exited before verification (code=${code == null ? "null" : String(code)}).`);
+    const sigText = signal ? ` signal=${signal}` : "";
+    finish(
+      false,
+      `process exited before verification (code=${code == null ? "null" : String(code)}${sigText}).`
+    );
   });
 
   const timer = setTimeout(() => {

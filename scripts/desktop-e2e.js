@@ -22,8 +22,12 @@ runElectronLogHarness({
   env: context.env,
   timeoutMs,
   onJsonLogLine: onLogLine,
-  onProcessExit: (code, finish) => {
-    finish(false, `electron exited before success criteria (code=${code == null ? "null" : String(code)}).`);
+  onProcessExit: (code, signal, finish) => {
+    const sig = signal ? ` signal=${signal}` : "";
+    finish(
+      false,
+      `electron exited before success criteria (code=${code == null ? "null" : String(code)}${sig}).`
+    );
   },
 });
 

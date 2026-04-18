@@ -44,10 +44,10 @@ Flat config: `eslint.config.js`. CI runs `npm run lint` before unit tests. Repo 
 
 If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`, close running Electron apps (including the desktop dev app) and retry.
 
-### ABI note (`better-sqlite3`)
+### ABI note (native modules: `better-sqlite3`, SQLCipher, `sharp`)
 
 - CI / Node unit tests: use `npm ci`, then `npm run lint` and `npm test`.
-- Electron runtime: run `npm --prefix F:\AI\project\apps\desktop run rebuild:electron` before `npm --prefix F:\AI\project\apps\desktop run dev:electron` when needed.
+- Electron runtime: run `npm --prefix F:\AI\project\apps\desktop run rebuild:electron` (rebuilds sqlite + sqlcipher + sharp for Electron) before `npm --prefix F:\AI\project\apps\desktop run dev:electron` when needed.
 - Do **not** force `electron-rebuild` in `postinstall`; it can rebuild native modules for Electron ABI and break Node test ABI in the same environment.
 
 ### Runtime SQLite encryption migration (minimal)
