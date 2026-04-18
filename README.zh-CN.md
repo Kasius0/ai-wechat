@@ -89,6 +89,15 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:flow
 
 `test:desktop-e2e:flow` 会在桌面主进程内执行固定 runtime 事件链（`reset -> session_start -> wechat_normal -> trigger_send -> send_ok -> cooldown_done`），并要求出现 `desktop-e2e-flow-pass` 日志。
 
+渲染器驱动 IPC 流程验收：
+
+```powershell
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"   # 加密库时需要
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:renderer
+```
+
+`test:desktop-e2e:renderer` 会在渲染器上下文通过 preload API（`window.runtime.*`、`window.wechat.listCaptures`）执行流程，并要求出现 `desktop-e2e-renderer-flow-pass` 日志。
+
 ## 二、常见问题速查
 
 ### 报错：`npm install` / `npm ci` 出现 `EBUSY`、`electron\dist\icudtl.dat`

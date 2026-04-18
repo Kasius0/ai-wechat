@@ -101,6 +101,15 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:flow
 
 `test:desktop-e2e:flow` runs a deterministic runtime event chain (`reset -> session_start -> wechat_normal -> trigger_send -> send_ok -> cooldown_done`) in desktop main process and expects `desktop-e2e-flow-pass`.
 
+Renderer-driven IPC flow check:
+
+```powershell
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"   # optional when encrypted
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:renderer
+```
+
+`test:desktop-e2e:renderer` runs from renderer context via preload APIs (`window.runtime.*`, `window.wechat.listCaptures`) and expects `desktop-e2e-renderer-flow-pass`.
+
 ## Other Useful Commands
 
 Start mock API only:

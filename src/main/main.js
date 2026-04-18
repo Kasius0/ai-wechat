@@ -24,10 +24,11 @@ app.on("web-contents-created", (_event, webContents) => {
 });
 
 function createMainWindow() {
+  const e2eRendererFlow = /^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_RENDERER_FLOW || ""));
   mainWindow = new BrowserWindow({
     width: 980,
     height: 720,
-    show: true,
+    show: !e2eRendererFlow,
     webPreferences: {
       preload: path.join(__dirname, "..", "preload", "index.js"),
       contextIsolation: true,
@@ -42,6 +43,84 @@ function createMainWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+}
+
+async function runDesktopE2ERendererFlow() {
+  const sessionId = String(process.env.DESKTOP_E2E_SESSION || "__desktop_e2e_renderer__").trim()
+    || "__desktop_e2e_renderer__";
+  logMain({
+    module: "main",
+    event: "desktop-e2e-renderer-flow-start",
+    sessionId,
+  });
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    logMain({
+      module: "main",
+      event: "desktop-e2e-renderer-flow-fail",
+      reason: "mainWindow is unavailable",
+      sessionId,
+    });
+    return;
+  }
+  try {
+    const result = await mainWindow.webContents.executeJavaScript(
+      `(async () => {
+        const sid = ${JSON.stringify(sessionId)};
+        const steps = [];
+        async function run(name, fn) {
+          const res = await fn();
+          steps.push({ name, ok: !!res?.ok, code: res?.code || null, state: res?.data?.state || null });
+          return res;
+        }
+        const state0 = await run("runtime.state", () => window.runtime.state({ sessionId: sid }));
+        const reset = await run("runtime.reset", () => window.runtime.event({ sessionId: sid, event: "reset" }));
+        const s1 = await run("runtime.session_start", () => window.runtime.event({ sessionId: sid, event: "session_start" }));
+        const s2 = await run("runtime.wechat_normal", () => window.runtime.event({ sessionId: sid, event: "wechat_normal" }));
+        const s3 = await run("runtime.trigger_send", () => window.runtime.event({ sessionId: sid, event: "trigger_send" }));
+        const s4 = await run("runtime.send_ok", () => window.runtime.event({ sessionId: sid, event: "send_ok" }));
+        const s5 = await run("runtime.cooldown_done", () => window.runtime.event({ sessionId: sid, event: "cooldown_done" }));
+        const wechatList = await run("wechat.list_captures", () => window.wechat.listCaptures({ sessionId: sid, limit: 1 }));
+        const finalState = await run("runtime.state.final", () => window.runtime.state({ sessionId: sid }));
+        const allOk = [state0, reset, s1, s2, s3, s4, s5, wechatList, finalState].every((r) => r && r.ok === true);
+        const finalIdle = finalState?.data?.state === "idle";
+        const wechatHasRuntime = !!wechatList?.data?.runtime;
+        return {
+          ok: allOk && finalIdle && wechatHasRuntime,
+          allOk,
+          finalIdle,
+          wechatHasRuntime,
+          sessionId: sid,
+          finalState: finalState?.data?.state || null,
+          steps,
+        };
+      })()`,
+      true
+    );
+    if (!result?.ok) {
+      logMain({
+        module: "main",
+        event: "desktop-e2e-renderer-flow-fail",
+        sessionId,
+        result,
+      });
+      return;
+    }
+    logMain({
+      module: "main",
+      event: "desktop-e2e-renderer-flow-pass",
+      sessionId,
+      finalState: result?.finalState,
+      stepCount: Array.isArray(result?.steps) ? result.steps.length : 0,
+    });
+  } catch (error) {
+    logMain({
+      module: "main",
+      event: "desktop-e2e-renderer-flow-fail",
+      sessionId,
+      message: error?.message || String(error),
+      name: error?.name,
+    });
+  }
 }
 
 function runDesktopE2EFlow() {
@@ -211,6 +290,14 @@ app.whenReady().then(() => {
   }
 
   createMainWindow();
+
+  if (/^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_RENDERER_FLOW || ""))) {
+    mainWindow.webContents.once("did-finish-load", async () => {
+      await runDesktopE2ERendererFlow();
+      app.quit();
+    });
+    return;
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
