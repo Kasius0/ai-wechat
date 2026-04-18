@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawn } = require("node:child_process");
-const os = require("node:os");
+const { runElectronLogHarness } = require("./lib/electron-log-harness");
 
 const mode = String(process.argv[2] || "").trim();
 const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
@@ -20,28 +19,6 @@ if (!runtimeKey) {
   process.exit(1);
 }
 
-function stopProcessTree(child, done) {
-  if (!child || child.killed) {
-    done();
-    return;
-  }
-  if (os.platform() === "win32" && child.pid) {
-    const killer = spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-      stdio: "ignore",
-      shell: true,
-    });
-    killer.on("exit", () => done());
-    killer.on("error", () => done());
-    return;
-  }
-  try {
-    child.kill("SIGTERM");
-  } catch {
-    // ignore
-  }
-  done();
-}
-
 const env = {
   ...process.env,
   RUNTIME_SQLITE_ENCRYPTION: "1",
@@ -49,42 +26,7 @@ const env = {
   RUNTIME_SQLITE_KEY: runtimeKey,
 };
 
-const child = spawn("npm", ["run", "start"], {
-  env,
-  shell: true,
-  stdio: ["ignore", "pipe", "pipe"],
-});
-
-let buffer = "";
-let settled = false;
-
-function finish(ok, message) {
-  if (settled) {
-    return;
-  }
-  settled = true;
-  clearTimeout(timer);
-  stopProcessTree(child, () => {
-    if (ok) {
-      console.log(`[verify-runtime-sqlite-startup] PASS: ${message}`);
-      process.exit(0);
-    }
-    console.error(`[verify-runtime-sqlite-startup] FAIL: ${message}`);
-    process.exit(1);
-  });
-}
-
-function tryHandleLine(line) {
-  const trimmed = String(line || "").trim();
-  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
-    return;
-  }
-  let payload = null;
-  try {
-    payload = JSON.parse(trimmed);
-  } catch {
-    return;
-  }
+function tryHandleLine(payload, finish) {
   const event = payload && payload.event;
   if (mode === "encrypted-start") {
     if (
@@ -117,28 +59,13 @@ function tryHandleLine(line) {
   }
 }
 
-function onChunk(chunk) {
-  buffer += String(chunk);
-  const lines = buffer.split(/\r?\n/);
-  buffer = lines.pop() || "";
-  for (const line of lines) {
-    tryHandleLine(line);
-    if (settled) {
-      return;
-    }
-  }
-}
-
-child.stdout.on("data", onChunk);
-child.stderr.on("data", onChunk);
-child.on("error", (error) => finish(false, error?.message || String(error)));
-child.on("exit", (code) => {
-  if (!settled) {
+runElectronLogHarness({
+  name: "verify-runtime-sqlite-startup",
+  env,
+  timeoutMs,
+  onJsonLogLine: tryHandleLine,
+  onProcessExit: (code, finish) => {
     finish(false, `process exited before verification (code=${code == null ? "null" : String(code)}).`);
-  }
+  },
 });
-
-const timer = setTimeout(() => {
-  finish(false, `timeout after ${timeoutMs}ms.`);
-}, timeoutMs);
 
