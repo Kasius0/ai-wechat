@@ -6,9 +6,42 @@ const { runElectronLogHarness } = require("./lib/electron-log-harness");
 const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
 const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
 const mode = String(process.argv[2] || "startup").trim().toLowerCase();
+const MODE_CONFIG = {
+  startup: {
+    envFlag: null,
+    passSeenKey: null,
+    passMessage: "startup emitted encryption-config, sqlite-ready, and app-ready.",
+  },
+  flow: {
+    envFlag: "DESKTOP_E2E_FLOW",
+    passSeenKey: "flowPass",
+    passEvent: "desktop-e2e-flow-pass",
+    failEvent: "desktop-e2e-flow-fail",
+    failFallbackMessage: "desktop runtime flow failed.",
+    passMessage: "flow emitted startup signals and desktop-e2e-flow-pass.",
+  },
+  renderer: {
+    envFlag: "DESKTOP_E2E_RENDERER_FLOW",
+    passSeenKey: "rendererPass",
+    passEvent: "desktop-e2e-renderer-flow-pass",
+    failEvent: "desktop-e2e-renderer-flow-fail",
+    failFallbackMessage: "desktop renderer flow failed.",
+    passMessage: "renderer flow emitted startup signals and desktop-e2e-renderer-flow-pass.",
+  },
+  ui: {
+    envFlag: "DESKTOP_E2E_UI_FLOW",
+    passSeenKey: "uiPass",
+    passEvent: "desktop-e2e-ui-pass",
+    failEvent: "desktop-e2e-ui-fail",
+    failFallbackMessage: "desktop UI flow failed.",
+    passMessage: "ui flow emitted startup signals and desktop-e2e-ui-pass.",
+  },
+};
+const modeConfig = MODE_CONFIG[mode];
 
-if (!["startup", "flow", "renderer", "ui"].includes(mode)) {
-  console.error("[desktop-e2e] usage: node scripts/desktop-e2e.js <startup|flow|renderer|ui>");
+if (!modeConfig) {
+  const usageModes = Object.keys(MODE_CONFIG).join("|");
+  console.error(`[desktop-e2e] usage: node scripts/desktop-e2e.js <${usageModes}>`);
   process.exit(1);
 }
 
@@ -18,14 +51,8 @@ if (runtimeKey) {
   env.RUNTIME_SQLITE_ENCRYPTION_MODE = "sqlcipher";
   env.RUNTIME_SQLITE_KEY = runtimeKey;
 }
-if (mode === "flow") {
-  env.DESKTOP_E2E_FLOW = "1";
-}
-if (mode === "renderer") {
-  env.DESKTOP_E2E_RENDERER_FLOW = "1";
-}
-if (mode === "ui") {
-  env.DESKTOP_E2E_UI_FLOW = "1";
+if (modeConfig.envFlag) {
+  env[modeConfig.envFlag] = "1";
 }
 
 const seen = {
@@ -59,42 +86,19 @@ function onLogLine(payload, finish) {
   if (event === "app-ready") {
     seen.appReady = true;
   }
-  if (event === "desktop-e2e-flow-pass") {
-    seen.flowPass = true;
+
+  if (modeConfig.passSeenKey && event === modeConfig.passEvent) {
+    seen[modeConfig.passSeenKey] = true;
   }
-  if (event === "desktop-e2e-renderer-flow-pass") {
-    seen.rendererPass = true;
-  }
-  if (event === "desktop-e2e-ui-pass") {
-    seen.uiPass = true;
-  }
-  if (event === "desktop-e2e-flow-fail") {
-    finish(false, payload?.reason || payload?.message || "desktop runtime flow failed.");
-    return;
-  }
-  if (event === "desktop-e2e-renderer-flow-fail") {
-    finish(false, payload?.reason || payload?.message || "desktop renderer flow failed.");
-    return;
-  }
-  if (event === "desktop-e2e-ui-fail") {
-    finish(false, payload?.reason || payload?.message || "desktop UI flow failed.");
+  if (modeConfig.failEvent && event === modeConfig.failEvent) {
+    finish(false, payload?.reason || payload?.message || modeConfig.failFallbackMessage);
     return;
   }
 
-  if (mode === "startup" && seen.encryptionConfig && seen.sqliteReady && seen.appReady) {
-    finish(true, "startup emitted encryption-config, sqlite-ready, and app-ready.");
-    return;
-  }
-  if (mode === "flow" && seen.encryptionConfig && seen.sqliteReady && seen.appReady && seen.flowPass) {
-    finish(true, "flow emitted startup signals and desktop-e2e-flow-pass.");
-    return;
-  }
-  if (mode === "renderer" && seen.encryptionConfig && seen.sqliteReady && seen.appReady && seen.rendererPass) {
-    finish(true, "renderer flow emitted startup signals and desktop-e2e-renderer-flow-pass.");
-    return;
-  }
-  if (mode === "ui" && seen.encryptionConfig && seen.sqliteReady && seen.appReady && seen.uiPass) {
-    finish(true, "ui flow emitted startup signals and desktop-e2e-ui-pass.");
+  const startupReady = seen.encryptionConfig && seen.sqliteReady && seen.appReady;
+  const modeReady = !modeConfig.passSeenKey || seen[modeConfig.passSeenKey];
+  if (startupReady && modeReady) {
+    finish(true, modeConfig.passMessage);
   }
 }
 
