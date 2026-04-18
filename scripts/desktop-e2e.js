@@ -7,6 +7,7 @@ const {
   getDesktopE2EModeConfig,
   createDesktopE2ESeenState,
 } = require("./lib/desktop-e2e-mode-config");
+const { evaluateDesktopE2ELog } = require("./lib/desktop-e2e-log-evaluator");
 
 const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
 const runtimeKey = String(process.env.RUNTIME_SQLITE_KEY || "").trim();
@@ -32,40 +33,17 @@ if (modeConfig.envFlag) {
 const seen = createDesktopE2ESeenState();
 
 function onLogLine(payload, finish) {
-  const event = payload?.event;
-
-  if (event === "runtime-sqlite-init-failed") {
-    finish(false, payload?.message || "runtime sqlite init failed.");
+  const result = evaluateDesktopE2ELog(payload, {
+    seen,
+    modeConfig,
+    runtimeKey,
+  });
+  if (result.status === "fail") {
+    finish(false, result.message);
     return;
   }
-  if (event === "runtime-sqlite-encryption-config") {
-    seen.encryptionConfig = true;
-  }
-  if (event === "runtime-sqlite-ready") {
-    if (runtimeKey) {
-      if (!(payload?.encryption?.enabled === true && payload?.encryption?.mode === "sqlcipher")) {
-        finish(false, "encrypted mode expected but runtime-sqlite-ready is not sqlcipher.");
-        return;
-      }
-    }
-    seen.sqliteReady = true;
-  }
-  if (event === "app-ready") {
-    seen.appReady = true;
-  }
-
-  if (modeConfig.passSeenKey && event === modeConfig.passEvent) {
-    seen[modeConfig.passSeenKey] = true;
-  }
-  if (modeConfig.failEvent && event === modeConfig.failEvent) {
-    finish(false, payload?.reason || payload?.message || modeConfig.failFallbackMessage);
-    return;
-  }
-
-  const startupReady = seen.encryptionConfig && seen.sqliteReady && seen.appReady;
-  const modeReady = !modeConfig.passSeenKey || seen[modeConfig.passSeenKey];
-  if (startupReady && modeReady) {
-    finish(true, modeConfig.passMessage);
+  if (result.status === "pass") {
+    finish(true, result.message);
   }
 }
 
