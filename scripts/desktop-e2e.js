@@ -7,6 +7,7 @@ const {
   getDesktopE2EModeConfig,
   createDesktopE2ESeenState,
 } = require("./lib/desktop-e2e-mode-config");
+const { buildDesktopE2EEnv } = require("./lib/desktop-e2e-env");
 const { evaluateDesktopE2ELog } = require("./lib/desktop-e2e-log-evaluator");
 
 const timeoutMs = Number(process.env.DESKTOP_E2E_TIMEOUT_MS || 30000);
@@ -20,15 +21,7 @@ if (!modeConfig) {
   process.exit(1);
 }
 
-const env = { ...process.env };
-if (runtimeKey) {
-  env.RUNTIME_SQLITE_ENCRYPTION = "1";
-  env.RUNTIME_SQLITE_ENCRYPTION_MODE = "sqlcipher";
-  env.RUNTIME_SQLITE_KEY = runtimeKey;
-}
-if (modeConfig.envFlag) {
-  env[modeConfig.envFlag] = "1";
-}
+const env = buildDesktopE2EEnv(process.env, { runtimeKey, modeConfig });
 
 const seen = createDesktopE2ESeenState();
 
