@@ -1,0 +1,100 @@
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  margin: 20px;
+}
+
+button {
+  padding: 8px 12px;
+}
+
+pre {
+  background: #0b1020;
+  color: #d6e4ff;
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+}
+
+#output.output-root {
+  max-width: 100%;
+}
+
+#output .output-json-body {
+  margin: 0;
+}
+
+.output-runtime-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #7c3aed;
+  background: linear-gradient(145deg, #1e1435 0%, #0b1020 100%);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25);
+}
+
+.output-runtime-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #c4b5fd;
+  margin-bottom: 8px;
+}
+
+.output-runtime-body {
+  margin: 0;
+  background: rgba(11, 16, 32, 0.85);
+  color: #e9d5ff;
+}
+
+.section {
+  margin-top: 12px;
+}
+
+.trace-bar {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.trace-hint {
+  margin-top: 8px;
+  color: #374151;
+}
+
+#traceSearchCmdValue {
+  color: #0f172a;
+}
+
+#traceIdValue {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.ml10 {
+  margin-left: 10px;
+}
+
+.w90 {
+  width: 90px;
+}
+
+.w300 {
+  width: 300px;
+}
+
+button.runtime-btn-allowed {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+button.runtime-btn-blocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.runtime-state-summary {
+  color: #374151;
+  font-weight: 500;
+}

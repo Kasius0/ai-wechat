@@ -9,6 +9,23 @@ This project includes a reusable WeChat automation flow with retry and checks, p
 
 ## Commands
 
+### 0) ESLint
+
+```powershell
+npm --prefix F:\AI\project\apps\desktop run lint
+npm --prefix F:\AI\project\apps\desktop run lint:fix
+```
+
+Flat config: `eslint.config.js`. CI runs `npm run lint` before unit tests. Repo also includes **`.editorconfig`** and **`.vscode/`** (recommended extensions: ESLint, EditorConfig; `eslint.useFlatConfig` enabled).
+
+If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`, close running Electron apps (including the desktop dev app) and retry.
+
+### ABI note (`better-sqlite3`)
+
+- CI / Node unit tests: use `npm ci`, then `npm run lint` and `npm test`.
+- Electron runtime: run `npm --prefix F:\AI\project\apps\desktop run rebuild:electron` before `npm --prefix F:\AI\project\apps\desktop run dev:electron` when needed.
+- Do **not** force `electron-rebuild` in `postinstall`; it can rebuild native modules for Electron ABI and break Node test ABI in the same environment.
+
 ### 1) Mock E2E (recommended default)
 
 Runs full flow in one command:
@@ -100,3 +117,109 @@ Look for:
 - `code: "OK"`
 - `echoChecked: true`
 - `sendVerified: true`
+
+## Quick Send Options (Week4)
+
+`wechat:quick-send` now supports an `options` object to keep advanced controls grouped.
+
+Example request payload:
+
+```json
+{
+  "text": "你好，这是自动化发送测试",
+  "inputX": 20,
+  "inputY": 140,
+  "delayMs": 20,
+  "options": {
+    "dryRun": true,
+    "retry": {
+      "maxRetries": 2,
+      "delayMs": 120
+    },
+    "injectFailure": {
+      "step": "mouse-move",
+      "times": 1
+    },
+    "traceId": "optional-custom-id"
+  }
+}
+```
+
+Notes:
+
+- `options.dryRun`: run focus/move/click only, skip type/enter
+- `options.retry.maxRetries`: step retry count (0-3)
+- `options.retry.delayMs`: delay between retries
+- `options.injectFailure`: dev-only failure injection for retry verification
+- `options.traceId`: optional; correlates main-process JSON log lines with IPC responses (auto-generated if omitted)
+- Backward compatibility: legacy top-level `retry`/`injectFailure` is still accepted
+
+## Week 4 wrap-up: main log file and terminal search
+
+- **Log path (repo root):** `F:\AI\project\runtime\logs\desktop-main.log` (also returned as `data.logFilePath` on `wechat:quick-send`).
+- **Rotation:** when the file reaches **5 MiB** (override with env `DESKTOP_MAIN_LOG_MAX_BYTES`), it is renamed to `desktop-main.<timestamp>.log` and a new file is started. Up to **5** archives are kept (override with `DESKTOP_MAIN_LOG_KEEP`).
+- **Search with ripgrep:** in PowerShell, do **not** wrap a Windows path in double quotes if it contains `\r` (e.g. `\runtime`); use single quotes or forward slashes:
+
+```powershell
+rg -F 'dryrun-xxxx' 'F:\AI\project\runtime\logs\desktop-main.log'
+# or
+rg -F 'dryrun-xxxx' 'F:/AI/project/runtime/logs/desktop-main.log'
+```
+
+- **Without ripgrep:**
+
+```powershell
+Select-String -LiteralPath 'F:\AI\project\runtime\logs\desktop-main.log' -Pattern 'dryrun-xxxx'
+```
+
+## Week 5: in-process runtime state machine (desktop main)
+
+The Electron main process keeps an **in-memory session state machine** (idle → awaiting_context → ready_to_reply → sending → cooldown → idle, plus `error` / `reset`). Dev tooling and `wechat:*` IPC stay aligned via `dispatchRuntimeEvent`.
+
+### IPC
+
+| Channel | Role |
+|--------|------|
+| `runtime:state` | Read full state, `allowedEvents`, history |
+| `runtime:event` | Apply named events (`session_start`, `wechat_normal`, …) |
+
+Preload exposes `window.runtime.state()` and `window.runtime.event(payload)`.
+
+### `data.runtime` on `wechat:*` responses
+
+Almost every **`wechat:*`** handler merges a **`runtime`** snapshot into **`data`**: `state`, `allowedEvents`, `lastTraceId`, `lastError` (same shape as `getRuntimeSnapshot()`). Pure merge helper: `src/main/modules/runtime/enrich-wechat-ipc-result.js`.
+
+- **`wechat:quick-send`** attaches it via the existing `quickSendData` path.
+- **Uncaught errors** inside `wechat:*` handlers use **`defineHandler(..., { attachRuntimeOnError: true })`** so structured failures still include `data.runtime`. Other domains (`app`, `rpa`, `runtime`) keep the default (`false`).
+
+### Single-step `wechat:*` and the state machine
+
+When the session is in **`awaiting_context`**, several IPCs call `dispatchRuntimeEvent` (e.g. status-like results → `wechat_normal` / `wechat_abnormal`). See `src/main/modules/runtime/single-step-wechat-runtime-sync.js`. **`wechat:quick-send`** uses `quick-send-runtime-bridge.js` (starts with `reset` + `session_start`).
+
+### Unit tests
+
+```powershell
+npm --prefix F:\AI\project\apps\desktop test
+```
+
+Runs `node scripts/run-unit-tests.js` (all `test/*.test.js`), including `get-runtime-highlight-block` (renderer output highlight), state machine, quick-send bridge, single-step sync, `enrich-wechat-ipc-result`, and `defineHandler` runtime-on-error behavior.
+
+Pure logic lives in `src/renderer/get-runtime-highlight-block.js` (loaded before `renderer.js` in `index.html`; Node tests can `require` it).
+
+### CI
+
+GitHub Actions workflow: **`.github/workflows/desktop-ci.yml`** (repo root). On push/PR when files under `project/apps/desktop/` change, it runs **`npm ci` → `npm run lint` → `npm test`** in that directory (Ubuntu). Node version follows **`project/apps/desktop/.nvmrc`** (currently **20**), matching `package.json` **`engines.node`** (`>=20`).
+
+### Dev output: runtime highlight panel
+
+When the returned JSON includes **`data.runtime`** as an object, the renderer shows the full response in the main `<pre>` and adds a highlighted block below (purple border), labeled **`data.runtime`**.
+
+For **`runtime:state`** / **`runtime:event`**-shaped payloads (top-level `data.state` + `data.allowedEvents`, no embedded `data.runtime`, not `wechat-quick-send`), a **「运行时快照」** panel shows a compact `{ state, allowedEvents, lastTraceId, lastError, from?, event? }` extract. Implemented in **`src/renderer/get-runtime-highlight-block.js`**.
+
+### Full detail (Chinese)
+
+See **`README.zh-CN.md`** §八 and IPC §四 for Dev UI, `allowedEvents` button sync, and logging conventions.
+
+### Known limits & follow-ups (not in current scope)
+
+See **[ROADMAP.md](ROADMAP.md)** (English + Chinese, maintained there).

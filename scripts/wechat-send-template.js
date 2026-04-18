@@ -96,7 +96,7 @@ function parseHttpBaseUrl(baseUrl) {
   let url;
   try {
     url = new URL(baseUrl);
-  } catch (error) {
+  } catch {
     throw new Error(`invalid WECHAT_AUTOMATION_BASE_URL: "${baseUrl}"`);
   }
 

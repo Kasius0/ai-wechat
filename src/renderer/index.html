@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WePulse Client - Dev</title>
+    <link rel="stylesheet" href="./renderer.css" />
+  </head>
+  <body>
+    <h2>WePulse Client（开发模式）</h2>
+    <p>目标：验证 main / preload / renderer / IPC 最小闭环。</p>
+    <button id="btnPing">IPC 连通测试</button>
+    <button id="btnInfo">应用信息</button>
+    <button id="btnWechatContext">微信窗口上下文</button>
+    <button id="btnWechatStatusDetail">微信状态详情</button>
+    <button id="btnWechatStatusSim">状态详情（模拟最小化）</button>
+    <button id="btnWechatStatusTiny">状态详情（模拟小窗）</button>
+    <button id="btnWechatStatusOut">状态详情（模拟越界）</button>
+    <button id="btnWechatStatusTitleEmpty">状态详情（模拟空标题）</button>
+    <button id="btnWechatFocus">聚焦微信窗口</button>
+    <button id="btnWechatCapture">截图（正常才截）</button>
+    <button id="btnWechatCaptureSave">截图并保存</button>
+    <button id="btnWechatListCaptures">查看最近截图</button>
+    <label class="ml10">保留数量 <input id="cleanupKeepLatest" class="w90" type="number" value="10" min="1" /></label>
+    <label class="ml10">小时阈值 <input id="cleanupOlderThanHours" class="w90" type="number" value="24" min="0" /></label>
+    <button id="btnWechatCleanupCaptures">清理截图</button>
+    <button id="btnWechatCaptureSimMin">截图（模拟最小化）</button>
+    <div class="section">
+      <strong>RPA 鼠标</strong>
+      <label class="ml10">x <input id="mouseX" class="w90" type="number" value="20" /></label>
+      <label class="ml10">y <input id="mouseY" class="w90" type="number" value="140" /></label>
+      <select id="mouseMode" aria-label="mouse coordinate mode" class="ml10">
+        <option value="wechat-relative">wechat-relative</option>
+        <option value="screen">screen</option>
+      </select>
+      <button id="btnMouseMove" class="ml10">鼠标移动</button>
+      <button id="btnMouseClick" class="ml10">鼠标点击</button>
+    </div>
+    <div class="section">
+      <strong>RPA 键盘</strong>
+      <label class="ml10"
+        >文本
+        <input id="typeTextValue" class="w300" type="text" value="你好，这是自动化发送测试" />
+      </label>
+      <label class="ml10"
+        >延迟(ms)
+        <input id="typeDelayMs" class="w90" type="number" value="20" />
+      </label>
+      <button id="btnTypeText" class="ml10">输入文本</button>
+      <button id="btnEnter" class="ml10">回车发送</button>
+      <button id="btnQuickSend" class="ml10">快捷发送（全流程）</button>
+      <button id="btnQuickSendDryRun" class="ml10">快捷发送（DryRun）</button>
+      <button id="btnQuickSendDryRunRetry" class="ml10">快捷发送（DryRun+重试）</button>
+      <button id="btnQuickSendDryRunInjectFail" class="ml10">快捷发送（DryRun+注入失败）</button>
+    </div>
+    <div class="section">
+      <strong>运行时状态机（Week5-1 / Week5-2 / Week5-3）</strong>
+      <span id="runtimeStateSummary" class="runtime-state-summary ml10">当前状态: —</span>
+      <button id="btnRuntimeState" class="ml10">查看运行时状态</button>
+      <button id="btnRuntimeSessionStart" class="ml10">开始会话</button>
+      <button id="btnRuntimeWechatNormal" class="ml10">模拟：微信正常</button>
+      <button id="btnRuntimeWechatAbnormal" class="ml10">模拟：微信异常</button>
+      <button id="btnRuntimeTriggerSend" class="ml10">模拟：触发发送</button>
+      <button id="btnRuntimeSendOk" class="ml10">模拟：发送成功</button>
+      <button id="btnRuntimeSendFail" class="ml10">模拟：发送失败</button>
+      <button id="btnRuntimeCooldownDone" class="ml10">模拟：冷却结束</button>
+      <button id="btnRuntimeReset" class="ml10">运行时重置</button>
+    </div>
+    <div class="trace-bar">
+      <span>traceId: <code id="traceIdValue">-</code></span>
+      <button id="btnCopyTraceId" class="ml10" disabled>复制 traceId</button>
+      <button id="btnCopyTraceSearchCmd" class="ml10" disabled>复制检索命令</button>
+    </div>
+    <div class="trace-hint">
+      <span>检索命令模板：</span>
+      <code id="traceSearchCmdValue"># 先触发一次 quick-send 生成 traceId</code>
+    </div>
+    <div id="output" class="output-root">
+      <pre class="output-json-body">点击「IPC 连通测试」查看返回</pre>
+    </div>
+
+    <script src="./get-runtime-highlight-block.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
