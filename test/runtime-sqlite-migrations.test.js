@@ -26,13 +26,14 @@ describe("runtime-sqlite-migrations", () => {
     d.close();
   });
 
-  test("rejects database newer than app schema", () => {
+  test("rejects database newer than app schema with stable message", () => {
     const d = new Database(":memory:");
     d.pragma("user_version = 99");
-    assert.throws(
-      () => migrateRuntimeSqliteSchema(d),
-      /newer than this app/
-    );
+    assert.throws(() => migrateRuntimeSqliteSchema(d), (error) => {
+      assert.match(String(error?.message || ""), /database user_version \(99\) is newer than this app/i);
+      assert.match(String(error?.message || ""), new RegExp(`\\(${RUNTIME_SQLITE_SCHEMA_VERSION}\\)`));
+      return true;
+    });
     d.close();
   });
 });

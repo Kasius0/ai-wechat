@@ -49,6 +49,20 @@ function migrationV0ToV1(database) {
   `);
 }
 
+/*
+ * Placeholder for the next schema bump (V1 -> V2).
+ *
+ * Trigger V2 only when row shape actually changes, e.g.:
+ * - add/remove/rename columns in `runtime_sessions`
+ * - split runtime data into additional tables
+ * - add indexes that should be created for all existing databases
+ *
+ * Keep migrations idempotent and forward-only:
+ * function migrationV1ToV2(database) {
+ *   database.exec(`...`);
+ * }
+ */
+
 /**
  * Apply sequential migrations until {@link RUNTIME_SQLITE_SCHEMA_VERSION}.
  * @param {import("better-sqlite3").Database} database
