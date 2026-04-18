@@ -14,6 +14,9 @@ on:
 jobs:
   unit-test:
     runs-on: ubuntu-latest
+    env:
+      # Avoid transient GitHub release download 5xx for Electron installs in CI.
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,6 +24,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-cache-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-cache-
       - name: Install dependencies (retry)
         run: |
           for i in 1 2 3; do
@@ -40,6 +52,9 @@ jobs:
   windows-installer:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: windows-latest
+    env:
+      # Avoid transient GitHub release download 5xx for Electron installs in CI.
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
     steps:
       # actions/checkout places the repo under GITHUB_WORKSPACE. On windows-latest, repos named like `0.`
       # can yield a workspace path that NTFS/Git treat inconsistently ("Directory ... does not exist").
@@ -100,6 +115,9 @@ jobs:
   desktop-e2e:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
+    env:
+      # Avoid transient GitHub release download 5xx for Electron installs in CI.
+      ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -111,6 +129,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-cache-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-cache-
       - name: Install dependencies (retry)
         run: |
           for i in 1 2 3; do
