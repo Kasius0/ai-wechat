@@ -92,6 +92,15 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e
 
 Checks startup logs for `runtime-sqlite-encryption-config`, `runtime-sqlite-ready`, and `app-ready`, then exits automatically.
 
+Flow-level runtime orchestration check:
+
+```powershell
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"   # optional when encrypted
+npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:flow
+```
+
+`test:desktop-e2e:flow` runs a deterministic runtime event chain (`reset -> session_start -> wechat_normal -> trigger_send -> send_ok -> cooldown_done`) in desktop main process and expects `desktop-e2e-flow-pass`.
+
 ## Other Useful Commands
 
 Start mock API only:
