@@ -7,6 +7,7 @@ const {
   initRuntimeSqlitePersistence,
   closeRuntimeSqlitePersistence,
   getRuntimeSqliteEncryptionStatus,
+  migrateRuntimeSqliteToSqlcipher,
 } = require("./modules/runtime/runtime-sqlite-persistence");
 const { dropRuntimeSessionForWebContents } = require("./modules/runtime/session-state-machine");
 
@@ -46,6 +47,12 @@ app.whenReady().then(() => {
     ? String(process.env.RUNTIME_SQLITE_ENCRYPTION_MODE || "sqlcipher").trim().toLowerCase()
     : "off";
   const runtimeEncryptionKey = String(process.env.RUNTIME_SQLITE_KEY || "");
+  const runtimeMigrateToSqlcipher = /^(1|true|yes)$/i.test(
+    String(process.env.RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER || "")
+  );
+  const runtimeMigrateKey = String(
+    process.env.RUNTIME_SQLITE_MIGRATE_KEY || process.env.RUNTIME_SQLITE_KEY || ""
+  );
   try {
     initRuntimeSqlitePersistence(runtimeDbPath, {
       encryption: {
@@ -55,7 +62,44 @@ app.whenReady().then(() => {
         keySource: runtimeEncryptionKey ? "env:RUNTIME_SQLITE_KEY" : "none",
       },
     });
-    const encryption = getRuntimeSqliteEncryptionStatus();
+    let encryption = getRuntimeSqliteEncryptionStatus();
+    if (runtimeMigrateToSqlcipher) {
+      if (encryption.enabled && encryption.mode === "sqlcipher") {
+        logMain({
+          module: "main",
+          event: "runtime-sqlite-encryption-migrate-skipped",
+          dbPath: runtimeDbPath,
+          reason: "database already encrypted",
+          encryption,
+        });
+      } else if (!runtimeMigrateKey.trim()) {
+        logMain({
+          module: "main",
+          event: "runtime-sqlite-encryption-migrate-skipped",
+          dbPath: runtimeDbPath,
+          reason: "missing migration key",
+        });
+      } else {
+        try {
+          migrateRuntimeSqliteToSqlcipher(runtimeMigrateKey);
+          encryption = getRuntimeSqliteEncryptionStatus();
+          logMain({
+            module: "main",
+            event: "runtime-sqlite-encryption-migrated",
+            dbPath: runtimeDbPath,
+            encryption,
+          });
+        } catch (migrationError) {
+          logMain({
+            module: "main",
+            event: "runtime-sqlite-encryption-migrate-failed",
+            dbPath: runtimeDbPath,
+            message: migrationError?.message || String(migrationError),
+            name: migrationError?.name,
+          });
+        }
+      }
+    }
     logMain({
       module: "main",
       event: "runtime-sqlite-ready",

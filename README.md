@@ -16,6 +16,20 @@ npm --prefix F:\AI\project\apps\desktop run lint
 npm --prefix F:\AI\project\apps\desktop run lint:fix
 ```
 
+### App startup scripts
+
+```powershell
+npm --prefix F:\AI\project\apps\desktop run start
+# legacy alias:
+npm --prefix F:\AI\project\apps\desktop run dev:electron
+# normal startup for encrypted runtime DB:
+$env:RUNTIME_SQLITE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run start:encrypted
+# one-time encryption migration startup:
+$env:RUNTIME_SQLITE_MIGRATE_KEY="REPLACE_WITH_STRONG_KEY"
+npm --prefix F:\AI\project\apps\desktop run start:migrate
+```
+
 Flat config: `eslint.config.js`. CI runs `npm run lint` before unit tests. Repo also includes **`.editorconfig`** and **`.vscode/`** (recommended extensions: ESLint, EditorConfig; `eslint.useFlatConfig` enabled).
 
 If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`, close running Electron apps (including the desktop dev app) and retry.
@@ -25,6 +39,15 @@ If **`npm install` / `npm ci` fails with `EBUSY`** on `electron/dist/icudtl.dat`
 - CI / Node unit tests: use `npm ci`, then `npm run lint` and `npm test`.
 - Electron runtime: run `npm --prefix F:\AI\project\apps\desktop run rebuild:electron` before `npm --prefix F:\AI\project\apps\desktop run dev:electron` when needed.
 - Do **not** force `electron-rebuild` in `postinstall`; it can rebuild native modules for Electron ABI and break Node test ABI in the same environment.
+
+### Runtime SQLite encryption migration (minimal)
+
+- This app now supports a **startup-time plaintext -> SQLCipher migration** behind env flags.
+- Set `RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER=1` and provide a non-empty key via `RUNTIME_SQLITE_MIGRATE_KEY` (or fallback `RUNTIME_SQLITE_KEY`).
+- Migration target is `app.getPath("userData")/runtime-sessions.sqlite`; `:memory:` is not supported.
+- Production tip: enable migration flags only for a controlled one-time window; after success, remove `RUNTIME_SQLITE_MIGRATE_TO_SQLCIPHER` (and temporary migrate key env) to avoid repeated migration attempts.
+- On migration failure, runtime keeps plaintext mode for that run and logs `runtime-sqlite-encryption-migrate-failed`.
+- Existing encrypted DB key rotation is available in code via `rotateRuntimeSqliteKey(oldKey, newKey)` (`runtime-sqlite-persistence`).
 
 ### 1) Mock E2E (recommended default)
 

@@ -91,6 +91,7 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "start": "electron .",
     "test": "node scripts/run-unit-tests.js",
     "test:wechat-title": "node scripts/read-wechat-title.js",
     "test:wechat-send": "node scripts/wechat-send-template.js",
@@ -98,7 +99,9 @@
     "test:wechat-e2e:real": "node scripts/wechat-e2e-real.js",
     "wechat-api:dev": "node scripts/mock-wechat-api.js",
     "wechat-api:restart": "node scripts/restart-wechat-api.js",
-    "dev:electron": "electron .",
+    "dev:electron": "npm run start",
+    "start:encrypted": "node scripts/start-encrypted.js",
+    "start:migrate": "node scripts/start-migrate.js",
     "rebuild:electron": "electron-rebuild -f -w better-sqlite3"
   },
   "keywords": [],
