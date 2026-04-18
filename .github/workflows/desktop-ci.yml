@@ -58,9 +58,19 @@ jobs:
           git -C $dest fetch --depth 1 origin "${{ github.sha }}"
           git -C $dest checkout "${{ github.sha }}"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "root=$dest"
+      # setup-node resolves node-version-file relative to GITHUB_WORKSPACE only; our clone lives in RUNNER_TEMP.
+      - name: Read Node version from cloned .nvmrc
+        id: nodever
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = "${{ steps.win_src.outputs.root }}"
+          $nvm = Join-Path $root ".nvmrc"
+          $v = (Get-Content -Raw -Path $nvm).Trim() -replace '\r?\n', ''
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$v"
       - uses: actions/setup-node@v4
         with:
-          node-version-file: ${{ steps.win_src.outputs.root }}/.nvmrc
+          node-version: ${{ steps.nodever.outputs.version }}
       - name: Install dependencies (retry)
         working-directory: ${{ steps.win_src.outputs.root }}
         shell: pwsh
