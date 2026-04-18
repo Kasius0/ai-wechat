@@ -57,6 +57,7 @@ function executeUpsert(sessionId, store) {
  *   mode?: "off" | "sqlcipher",
  *   key?: string,
  *   keySource?: string,
+ *   fallbackToPlaintext?: boolean,
  * }} RuntimeSqliteEncryptionConfig
  */
 
@@ -64,9 +65,12 @@ function executeUpsert(sessionId, store) {
  * @typedef {{ encryption?: RuntimeSqliteEncryptionConfig }} RuntimeSqlitePersistenceOptions
  */
 
+function escapeSqlitePragmaString(raw) {
+  return String(raw).replace(/'/g, "''");
+}
+
 /**
  * Resolve effective encryption status for observability.
- * Actual SQLCipher wiring is intentionally deferred; this is a compatibility skeleton.
  * @param {RuntimeSqlitePersistenceOptions | undefined} options
  */
 function resolveEncryptionStatus(options) {
@@ -82,7 +86,7 @@ function resolveEncryptionStatus(options) {
       enabled: false,
       mode,
       keySource,
-      reason: "unsupported encryption mode; running plaintext",
+      reason: "unsupported encryption mode",
     };
   }
   if (!cfg.key || !String(cfg.key).trim()) {
@@ -90,15 +94,27 @@ function resolveEncryptionStatus(options) {
       enabled: false,
       mode,
       keySource,
-      reason: "missing encryption key; running plaintext",
+      reason: "missing encryption key",
     };
   }
   return {
-    enabled: false,
+    enabled: true,
     mode,
     keySource,
-    reason: "sqlcipher not wired yet; running plaintext",
+    reason: "sqlcipher enabled",
   };
+}
+
+function loadSqliteDriver(mode) {
+  if (mode === "sqlcipher") {
+    return require("better-sqlite3-multiple-ciphers");
+  }
+  return require("better-sqlite3");
+}
+
+function openPlaintextDb(dbPath) {
+  const BetterSqlite3 = loadSqliteDriver("off");
+  return new BetterSqlite3(dbPath);
 }
 
 function initRuntimeSqlitePersistence(dbPath, options = undefined) {
@@ -108,9 +124,56 @@ function initRuntimeSqlitePersistence(dbPath, options = undefined) {
   if (!dbPath || typeof dbPath !== "string") {
     throw new Error("runtime sqlite: dbPath is required");
   }
-  const BetterSqlite3 = require("better-sqlite3");
-  db = new BetterSqlite3(dbPath);
-  encryptionStatus = resolveEncryptionStatus(options);
+
+  const cfg = options?.encryption || {};
+  const fallbackToPlaintext = cfg.fallbackToPlaintext === true;
+  const status = resolveEncryptionStatus(options);
+
+  if (cfg.enabled === true && status.enabled === false && !fallbackToPlaintext) {
+    throw new Error(`runtime sqlite encryption config invalid: ${status.reason}`);
+  }
+
+  try {
+    if (status.enabled) {
+      const SqlcipherDriver = loadSqliteDriver("sqlcipher");
+      db = new SqlcipherDriver(dbPath);
+      const escapedKey = escapeSqlitePragmaString(cfg.key);
+      db.pragma(`key='${escapedKey}'`);
+      db.prepare("SELECT count(*) AS c FROM sqlite_master").get();
+      encryptionStatus = status;
+    } else {
+      db = openPlaintextDb(dbPath);
+      encryptionStatus = status.enabled
+        ? status
+        : {
+            enabled: false,
+            mode: status.mode,
+            keySource: status.keySource,
+            reason: fallbackToPlaintext && cfg.enabled === true
+              ? `${status.reason}; fallback to plaintext`
+              : status.reason,
+          };
+    }
+  } catch (error) {
+    if (!fallbackToPlaintext) {
+      throw new Error(`runtime sqlite init failed: ${error?.message || String(error)}`);
+    }
+    if (db) {
+      try {
+        db.close();
+      } catch {
+        // ignore
+      }
+    }
+    db = openPlaintextDb(dbPath);
+    encryptionStatus = {
+      enabled: false,
+      mode: status.mode,
+      keySource: status.keySource,
+      reason: `encryption init failed; fallback to plaintext: ${error?.message || String(error)}`,
+    };
+  }
+
   db.pragma("journal_mode = WAL");
   migrateRuntimeSqliteSchema(db);
   upsertStmt = db.prepare(`

@@ -36,20 +36,32 @@ describe("runtime-sqlite-persistence", () => {
     assert.match(s.reason, /disabled/i);
   });
 
-  test("encryption skeleton keeps plaintext when config is incomplete", () => {
+  test("sqlcipher mode requires key by default (fail-fast)", () => {
+    closeRuntimeSqlitePersistence();
+    assert.throws(() => initRuntimeSqlitePersistence(":memory:", {
+      encryption: {
+        enabled: true,
+        mode: "sqlcipher",
+        keySource: "env:RUNTIME_SQLITE_KEY",
+      },
+    }), /missing encryption key/i);
+  });
+
+  test("sqlcipher mode can fallback to plaintext when configured", () => {
     closeRuntimeSqlitePersistence();
     initRuntimeSqlitePersistence(":memory:", {
       encryption: {
         enabled: true,
         mode: "sqlcipher",
         keySource: "env:RUNTIME_SQLITE_KEY",
+        fallbackToPlaintext: true,
       },
     });
     const s = getRuntimeSqliteEncryptionStatus();
     assert.equal(s.enabled, false);
     assert.equal(s.mode, "sqlcipher");
     assert.equal(s.keySource, "env:RUNTIME_SQLITE_KEY");
-    assert.match(s.reason, /missing encryption key|running plaintext/i);
+    assert.match(s.reason, /fallback to plaintext/i);
   });
 
   test("init applies migrations (user_version)", () => {

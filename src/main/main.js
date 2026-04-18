@@ -6,6 +6,7 @@ const { LOG_FILE_PATH, logMain } = require("./logging/main-logger");
 const {
   initRuntimeSqlitePersistence,
   closeRuntimeSqlitePersistence,
+  getRuntimeSqliteEncryptionStatus,
 } = require("./modules/runtime/runtime-sqlite-persistence");
 const { dropRuntimeSessionForWebContents } = require("./modules/runtime/session-state-machine");
 
@@ -40,12 +41,26 @@ function createMainWindow() {
 
 app.whenReady().then(() => {
   const runtimeDbPath = path.join(app.getPath("userData"), "runtime-sessions.sqlite");
+  const runtimeEncryptionEnabled = /^(1|true|yes)$/i.test(String(process.env.RUNTIME_SQLITE_ENCRYPTION || ""));
+  const runtimeEncryptionMode = runtimeEncryptionEnabled
+    ? String(process.env.RUNTIME_SQLITE_ENCRYPTION_MODE || "sqlcipher").trim().toLowerCase()
+    : "off";
+  const runtimeEncryptionKey = String(process.env.RUNTIME_SQLITE_KEY || "");
   try {
-    initRuntimeSqlitePersistence(runtimeDbPath);
+    initRuntimeSqlitePersistence(runtimeDbPath, {
+      encryption: {
+        enabled: runtimeEncryptionEnabled,
+        mode: runtimeEncryptionMode,
+        key: runtimeEncryptionKey,
+        keySource: runtimeEncryptionKey ? "env:RUNTIME_SQLITE_KEY" : "none",
+      },
+    });
+    const encryption = getRuntimeSqliteEncryptionStatus();
     logMain({
       module: "main",
       event: "runtime-sqlite-ready",
       dbPath: runtimeDbPath,
+      encryption,
     });
   } catch (error) {
     logMain({
