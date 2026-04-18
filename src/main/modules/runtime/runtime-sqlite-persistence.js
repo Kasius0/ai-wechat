@@ -13,6 +13,7 @@ let upsertStmt = null;
 let selectStmt = null;
 let deleteAllStmt = null;
 let deleteOneStmt = null;
+let dbPathValue = null;
 
 /** Coalesce rapid writes per session; quit / flush forces disk. */
 const PERSIST_DEBOUNCE_MS = 200;
@@ -117,6 +118,24 @@ function openPlaintextDb(dbPath) {
   return new BetterSqlite3(dbPath);
 }
 
+function bindRuntimeStatements(database) {
+  upsertStmt = database.prepare(`
+    INSERT INTO runtime_sessions (session_id, state, last_trace_id, last_error_json, history_json, updated_at)
+    VALUES (@session_id, @state, @last_trace_id, @last_error_json, @history_json, @updated_at)
+    ON CONFLICT(session_id) DO UPDATE SET
+      state = excluded.state,
+      last_trace_id = excluded.last_trace_id,
+      last_error_json = excluded.last_error_json,
+      history_json = excluded.history_json,
+      updated_at = excluded.updated_at;
+  `);
+  selectStmt = database.prepare(
+    `SELECT session_id, state, last_trace_id, last_error_json, history_json FROM runtime_sessions WHERE session_id = ?`
+  );
+  deleteAllStmt = database.prepare(`DELETE FROM runtime_sessions`);
+  deleteOneStmt = database.prepare(`DELETE FROM runtime_sessions WHERE session_id = ?`);
+}
+
 function initRuntimeSqlitePersistence(dbPath, options = undefined) {
   if (db) {
     return;
@@ -124,6 +143,7 @@ function initRuntimeSqlitePersistence(dbPath, options = undefined) {
   if (!dbPath || typeof dbPath !== "string") {
     throw new Error("runtime sqlite: dbPath is required");
   }
+  dbPathValue = dbPath;
 
   const cfg = options?.encryption || {};
   const fallbackToPlaintext = cfg.fallbackToPlaintext === true;
@@ -176,21 +196,7 @@ function initRuntimeSqlitePersistence(dbPath, options = undefined) {
 
   db.pragma("journal_mode = WAL");
   migrateRuntimeSqliteSchema(db);
-  upsertStmt = db.prepare(`
-    INSERT INTO runtime_sessions (session_id, state, last_trace_id, last_error_json, history_json, updated_at)
-    VALUES (@session_id, @state, @last_trace_id, @last_error_json, @history_json, @updated_at)
-    ON CONFLICT(session_id) DO UPDATE SET
-      state = excluded.state,
-      last_trace_id = excluded.last_trace_id,
-      last_error_json = excluded.last_error_json,
-      history_json = excluded.history_json,
-      updated_at = excluded.updated_at;
-  `);
-  selectStmt = db.prepare(
-    `SELECT session_id, state, last_trace_id, last_error_json, history_json FROM runtime_sessions WHERE session_id = ?`
-  );
-  deleteAllStmt = db.prepare(`DELETE FROM runtime_sessions`);
-  deleteOneStmt = db.prepare(`DELETE FROM runtime_sessions WHERE session_id = ?`);
+  bindRuntimeStatements(db);
 }
 
 function isPersistenceEnabled() {
@@ -199,6 +205,126 @@ function isPersistenceEnabled() {
 
 function getRuntimeSqliteEncryptionStatus() {
   return { ...encryptionStatus };
+}
+
+/**
+ * Rotate SQLCipher key for the currently opened runtime database.
+ * Requires runtime DB initialized in `sqlcipher` mode.
+ * @param {string} oldKey
+ * @param {string} newKey
+ * @returns {{ ok: true, mode: "sqlcipher", reason: string }}
+ */
+function rotateRuntimeSqliteKey(oldKey, newKey) {
+  if (!db) {
+    throw new Error("runtime sqlite rotate key failed: database is not initialized");
+  }
+  if (encryptionStatus.mode !== "sqlcipher" || encryptionStatus.enabled !== true) {
+    throw new Error("runtime sqlite rotate key failed: sqlcipher mode is not active");
+  }
+  const oldTrim = String(oldKey || "").trim();
+  const newTrim = String(newKey || "").trim();
+  if (!oldTrim) {
+    throw new Error("runtime sqlite rotate key failed: oldKey is required");
+  }
+  if (!newTrim) {
+    throw new Error("runtime sqlite rotate key failed: newKey is required");
+  }
+  if (oldTrim === newTrim) {
+    throw new Error("runtime sqlite rotate key failed: oldKey and newKey must differ");
+  }
+  flushAllPendingWrites();
+  const previousJournalMode = String(db.pragma("journal_mode", { simple: true }) || "").toUpperCase();
+  try {
+    if (previousJournalMode === "WAL") {
+      db.pragma("journal_mode = DELETE");
+    }
+    db.pragma(`key='${escapeSqlitePragmaString(oldTrim)}'`);
+    db.prepare("SELECT count(*) AS c FROM sqlite_master").get();
+    db.pragma(`rekey='${escapeSqlitePragmaString(newTrim)}'`);
+    db.prepare("SELECT count(*) AS c FROM sqlite_master").get();
+    encryptionStatus = {
+      enabled: true,
+      mode: "sqlcipher",
+      keySource: "rotated",
+      reason: "sqlcipher key rotated",
+    };
+    return { ok: true, mode: "sqlcipher", reason: "sqlcipher key rotated" };
+  } catch (error) {
+    throw new Error(`runtime sqlite rotate key failed: ${error?.message || String(error)}`);
+  } finally {
+    if (previousJournalMode === "WAL") {
+      db.pragma("journal_mode = WAL");
+    }
+  }
+}
+
+/**
+ * Migrate currently-open plaintext runtime DB to SQLCipher.
+ * Keeps the same DB file path and re-binds prepared statements.
+ * @param {string} newKey
+ * @returns {{ ok: true, mode: "sqlcipher", reason: string }}
+ */
+function migrateRuntimeSqliteToSqlcipher(newKey) {
+  if (!db) {
+    throw new Error("runtime sqlite migrate encryption failed: database is not initialized");
+  }
+  if (encryptionStatus.enabled === true) {
+    throw new Error("runtime sqlite migrate encryption failed: database is already encrypted");
+  }
+  const nextKey = String(newKey || "").trim();
+  if (!nextKey) {
+    throw new Error("runtime sqlite migrate encryption failed: newKey is required");
+  }
+  if (!dbPathValue || dbPathValue === ":memory:") {
+    throw new Error("runtime sqlite migrate encryption failed: file-backed database is required");
+  }
+  flushAllPendingWrites();
+  const previousDbPath = dbPathValue;
+  const previousStatus = { ...encryptionStatus };
+  const previousDb = db;
+  let migratedDb = null;
+  try {
+    previousDb.close();
+    db = null;
+    upsertStmt = null;
+    selectStmt = null;
+    deleteAllStmt = null;
+    deleteOneStmt = null;
+    const SqlcipherDriver = loadSqliteDriver("sqlcipher");
+    migratedDb = new SqlcipherDriver(previousDbPath);
+    const previousJournalMode = String(
+      migratedDb.pragma("journal_mode", { simple: true }) || ""
+    ).toUpperCase();
+    if (previousJournalMode === "WAL") {
+      migratedDb.pragma("journal_mode = DELETE");
+    }
+    migratedDb.prepare("SELECT count(*) AS c FROM sqlite_master").get();
+    migratedDb.pragma(`rekey='${escapeSqlitePragmaString(nextKey)}'`);
+    migratedDb.pragma(`key='${escapeSqlitePragmaString(nextKey)}'`);
+    migratedDb.prepare("SELECT count(*) AS c FROM sqlite_master").get();
+    migratedDb.pragma("journal_mode = WAL");
+    db = migratedDb;
+    bindRuntimeStatements(db);
+    encryptionStatus = {
+      enabled: true,
+      mode: "sqlcipher",
+      keySource: "migrated",
+      reason: "plaintext migrated to sqlcipher",
+    };
+    return { ok: true, mode: "sqlcipher", reason: "plaintext migrated to sqlcipher" };
+  } catch (error) {
+    if (migratedDb) {
+      try {
+        migratedDb.close();
+      } catch {
+        // ignore
+      }
+    }
+    db = openPlaintextDb(previousDbPath);
+    bindRuntimeStatements(db);
+    encryptionStatus = { ...previousStatus };
+    throw new Error(`runtime sqlite migrate encryption failed: ${error?.message || String(error)}`);
+  }
 }
 
 /** @returns {number | null} Current PRAGMA user_version, or null if DB not open. */
@@ -333,6 +459,7 @@ function closeRuntimeSqlitePersistence() {
     }
   }
   db = null;
+  dbPathValue = null;
   encryptionStatus = {
     enabled: false,
     mode: "off",
@@ -351,6 +478,8 @@ module.exports = {
   initRuntimeSqlitePersistence,
   isPersistenceEnabled,
   getRuntimeSqliteEncryptionStatus,
+  rotateRuntimeSqliteKey,
+  migrateRuntimeSqliteToSqlcipher,
   getRuntimeSqliteSchemaVersion,
   RUNTIME_SQLITE_SCHEMA_VERSION,
   loadSessionRow,
