@@ -63,3 +63,23 @@ This runbook covers **SQLCipher key rotation** and **rollback** for the runtime 
   - Rotate keys on a defined cadence and after security incidents.
   - Startup now emits `runtime-sqlite-key-governance-warning` in production when key source is direct env.
 
+## Rotation policy template (fill and own)
+
+Use this section as the operational contract for production:
+
+- Owner:
+  - Primary owner: `<team-or-person>`
+  - Backup owner: `<team-or-person>`
+- Cadence:
+  - Standard rotation: every `<N>` days
+  - Emergency rotation SLA after incident: within `<N>` hours
+- Mandatory incident triggers:
+  - Secret exposure (repo, logs, screenshots, support tickets)
+  - CI/CD secret store compromise or access anomaly
+  - Offboarding of privileged operators without prior rotation
+  - Any unplanned `runtime-sqlite-key-governance-warning` in production
+- Evidence and audit:
+  - Record rotation ticket ID: `<link-or-id>`
+  - Record key version before/after: `<version-tags>`
+  - Attach startup validation logs (`runtime-sqlite-ready`) after rotation
+
