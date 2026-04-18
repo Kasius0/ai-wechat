@@ -25,10 +25,11 @@ app.on("web-contents-created", (_event, webContents) => {
 
 function createMainWindow() {
   const e2eRendererFlow = /^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_RENDERER_FLOW || ""));
+  const e2eUiFlow = /^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_UI_FLOW || ""));
   mainWindow = new BrowserWindow({
     width: 980,
     height: 720,
-    show: !e2eRendererFlow,
+    show: !(e2eRendererFlow || e2eUiFlow),
     webPreferences: {
       preload: path.join(__dirname, "..", "preload", "index.js"),
       contextIsolation: true,
@@ -43,6 +44,115 @@ function createMainWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+}
+
+async function runDesktopE2EUiFlow() {
+  const sessionId = String(process.env.DESKTOP_E2E_SESSION || "__desktop_e2e_ui__").trim() || "__desktop_e2e_ui__";
+  logMain({
+    module: "main",
+    event: "desktop-e2e-ui-start",
+    sessionId,
+  });
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    logMain({
+      module: "main",
+      event: "desktop-e2e-ui-fail",
+      reason: "mainWindow is unavailable",
+      sessionId,
+    });
+    return;
+  }
+  try {
+    const result = await mainWindow.webContents.executeJavaScript(
+      `(async () => {
+        const sid = ${JSON.stringify(sessionId)};
+        function sleep(ms) {
+          return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+        function mustGet(id) {
+          const el = document.getElementById(id);
+          if (!el) {
+            throw new Error("missing element: " + id);
+          }
+          return el;
+        }
+        async function click(id) {
+          const el = mustGet(id);
+          el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+          await sleep(100);
+        }
+        async function typeInto(id, text) {
+          const el = mustGet(id);
+          el.focus();
+          el.value = "";
+          for (const ch of String(text)) {
+            el.dispatchEvent(new KeyboardEvent("keydown", { key: ch, bubbles: true }));
+            el.value += ch;
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new KeyboardEvent("keyup", { key: ch, bubbles: true }));
+            await sleep(10);
+          }
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          await sleep(50);
+        }
+        // Force the renderer handlers to use one deterministic session across all UI clicks.
+        const originalRuntimeState = window.runtime?.state;
+        const originalRuntimeEvent = window.runtime?.event;
+        const originalWechatList = window.wechat?.listCaptures;
+        if (!originalRuntimeState || !originalRuntimeEvent || !originalWechatList) {
+          throw new Error("required preload APIs unavailable");
+        }
+        window.runtime.state = (payload = {}) => originalRuntimeState({ ...payload, sessionId: sid });
+        window.runtime.event = (payload = {}) => originalRuntimeEvent({ ...payload, sessionId: sid });
+        window.wechat.listCaptures = (payload = {}) => originalWechatList({ ...payload, sessionId: sid });
+
+        await click("btnRuntimeReset");
+        await click("btnRuntimeSessionStart");
+        await click("btnRuntimeWechatNormal");
+        await click("btnRuntimeTriggerSend");
+        await click("btnRuntimeSendOk");
+        await click("btnRuntimeCooldownDone");
+        await typeInto("typeTextValue", "desktop-e2e-ui-typed");
+        await click("btnWechatListCaptures");
+        await click("btnRuntimeState");
+
+        const outputText = String(mustGet("output")?.textContent || "");
+        const finalSnapshot = await window.runtime.state({ sessionId: sid });
+        return {
+          ok: finalSnapshot?.ok === true && finalSnapshot?.data?.state === "idle",
+          sessionId: sid,
+          finalState: finalSnapshot?.data?.state || null,
+          typedText: mustGet("typeTextValue").value,
+          outputLength: outputText.length,
+        };
+      })()`,
+      true
+    );
+    if (!result?.ok) {
+      logMain({
+        module: "main",
+        event: "desktop-e2e-ui-fail",
+        sessionId,
+        result,
+      });
+      return;
+    }
+    logMain({
+      module: "main",
+      event: "desktop-e2e-ui-pass",
+      sessionId,
+      finalState: result?.finalState,
+      typedText: result?.typedText,
+    });
+  } catch (error) {
+    logMain({
+      module: "main",
+      event: "desktop-e2e-ui-fail",
+      sessionId,
+      message: error?.message || String(error),
+      name: error?.name,
+    });
+  }
 }
 
 async function runDesktopE2ERendererFlow() {
@@ -294,6 +404,13 @@ app.whenReady().then(() => {
   if (/^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_RENDERER_FLOW || ""))) {
     mainWindow.webContents.once("did-finish-load", async () => {
       await runDesktopE2ERendererFlow();
+      app.quit();
+    });
+    return;
+  }
+  if (/^(1|true|yes)$/i.test(String(process.env.DESKTOP_E2E_UI_FLOW || ""))) {
+    mainWindow.webContents.once("did-finish-load", async () => {
+      await runDesktopE2EUiFlow();
       app.quit();
     });
     return;
