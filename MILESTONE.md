@@ -70,9 +70,9 @@ If a new change breaks runtime startup or E2E:
 
 ### Week A (stability hardening)
 
-- [ ] Add CI artifact upload for desktop logs on E2E failure.
-- [ ] Add retry policy for flaky desktop E2E steps (bounded retries).
-- [ ] Add a short troubleshooting section for CI-only failures.
+- [x] Add CI artifact upload for desktop logs on E2E failure.
+- [x] Add retry policy for flaky desktop E2E steps (bounded retries).
+- [x] Add a short troubleshooting section for CI-only failures.
 
 ### Week B (security and key governance)
 
