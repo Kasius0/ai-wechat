@@ -1,7 +1,7 @@
 {
   "name": "desktop",
   "version": "1.0.0",
-  "description": "",
+  "description": "WeChat automation desktop app (Electron)",
   "main": "src/main/main.js",
   "dependencies": {
     "balanced-match": "^1.0.2",
@@ -93,9 +93,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win nsis",
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never",
+    "dist:win": "electron-builder --win nsis --publish never",
     "test": "node scripts/run-unit-tests.js",
     "test:wechat-title": "node scripts/read-wechat-title.js",
     "test:wechat-send": "node scripts/wechat-send-template.js",
