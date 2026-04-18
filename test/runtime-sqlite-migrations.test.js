@@ -15,6 +15,8 @@ describe("runtime-sqlite-migrations", () => {
     assert.equal(readUserVersion(d), RUNTIME_SQLITE_SCHEMA_VERSION);
     const row = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='runtime_sessions'").get();
     assert.ok(row);
+    const idx = d.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_runtime_sessions_updated_at'").get();
+    assert.ok(idx);
     d.close();
   });
 
@@ -34,6 +36,26 @@ describe("runtime-sqlite-migrations", () => {
       assert.match(String(error?.message || ""), new RegExp(`\\(${RUNTIME_SQLITE_SCHEMA_VERSION}\\)`));
       return true;
     });
+    d.close();
+  });
+
+  test("migrates existing v1 database to v2", () => {
+    const d = new Database(":memory:");
+    d.exec(`
+      CREATE TABLE runtime_sessions (
+        session_id TEXT PRIMARY KEY NOT NULL,
+        state TEXT NOT NULL,
+        last_trace_id TEXT,
+        last_error_json TEXT,
+        history_json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    d.pragma("user_version = 1");
+    migrateRuntimeSqliteSchema(d);
+    assert.equal(readUserVersion(d), RUNTIME_SQLITE_SCHEMA_VERSION);
+    const idx = d.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_runtime_sessions_updated_at'").get();
+    assert.ok(idx);
     d.close();
   });
 });

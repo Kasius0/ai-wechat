@@ -7,7 +7,7 @@
  * - Never decrement user_version in shipped migrations.
  */
 
-const RUNTIME_SQLITE_SCHEMA_VERSION = 1;
+const RUNTIME_SQLITE_SCHEMA_VERSION = 2;
 
 /**
  * @param {import("better-sqlite3").Database} database
@@ -49,19 +49,17 @@ function migrationV0ToV1(database) {
   `);
 }
 
-/*
- * Placeholder for the next schema bump (V1 -> V2).
- *
- * Trigger V2 only when row shape actually changes, e.g.:
- * - add/remove/rename columns in `runtime_sessions`
- * - split runtime data into additional tables
- * - add indexes that should be created for all existing databases
- *
- * Keep migrations idempotent and forward-only:
- * function migrationV1ToV2(database) {
- *   database.exec(`...`);
- * }
+/**
+ * V1 -> V2: add index for common cleanup/list order scans.
+ * This is backward-compatible and does not change row shape.
+ * @param {import("better-sqlite3").Database} database
  */
+function migrationV1ToV2(database) {
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_runtime_sessions_updated_at
+    ON runtime_sessions(updated_at);
+  `);
+}
 
 /**
  * Apply sequential migrations until {@link RUNTIME_SQLITE_SCHEMA_VERSION}.
@@ -82,11 +80,11 @@ function migrateRuntimeSqliteSchema(database) {
     writeUserVersion(database, 1);
   }
 
-  // if (current < 2) {
-  //   migrationV1ToV2(database);
-  //   current = 2;
-  //   writeUserVersion(database, 2);
-  // }
+  if (current < 2) {
+    migrationV1ToV2(database);
+    current = 2;
+    writeUserVersion(database, 2);
+  }
 
   if (current !== RUNTIME_SQLITE_SCHEMA_VERSION) {
     throw new Error(
