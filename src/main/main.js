@@ -1,6 +1,13 @@
 const path = require("node:path");
 const { app, BrowserWindow } = require("electron");
 
+// Linux CI (e.g. GitHub Actions + xvfb): default Chromium sandbox and small /dev/shm often crash Electron (exit -1).
+if (/^(1|true|yes)$/i.test(String(process.env.GITHUB_ACTIONS || ""))) {
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-dev-shm-usage");
+  app.commandLine.appendSwitch("disable-gpu");
+}
+
 const { registerIpcHandlers } = require("./ipc");
 const { LOG_FILE_PATH, logMain } = require("./logging/main-logger");
 const {
