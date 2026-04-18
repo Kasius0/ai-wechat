@@ -126,6 +126,13 @@ npm --prefix F:\AI\project\apps\desktop run test:desktop-e2e:ui
 - 通过 core 模块组装上下文
 - 统一交给 `electron-log-harness.js` 执行
 
+新增脚本贡献规范（建议）：
+
+- 优先复用 `scripts/lib/` 已有模块，避免出现并行重复工具链。
+- 入口脚本只做参数解析与装配，不承载复杂业务逻辑。
+- 可判定逻辑尽量下沉为纯函数 helper，并补充 `test/` 下的针对性单测。
+- 新增 E2E/verify 模式时，优先更新声明式配置与 core/helper，再改入口脚本。
+
 ## 二、常见问题速查
 
 ### 报错：`npm install` / `npm ci` 出现 `EBUSY`、`electron\dist\icudtl.dat`

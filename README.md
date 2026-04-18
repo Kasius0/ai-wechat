@@ -139,6 +139,13 @@ Entry scripts should stay thin:
 - build context via core module
 - run with `electron-log-harness.js`
 
+Contribution snippet for new scripts:
+
+- Reuse existing helpers in `scripts/lib/` first; avoid introducing parallel utilities.
+- Keep script entrypoints focused on argument parsing + wiring, not business logic.
+- Put deterministic decision logic in pure helper modules and add focused tests under `test/`.
+- When adding new E2E/verify modes, update declarative mode config/core helpers before touching entry scripts.
+
 ## Other Useful Commands
 
 Start mock API only:
