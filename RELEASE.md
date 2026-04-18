@@ -18,6 +18,7 @@ npm run dist:win   # Windows installer (NSIS)
 
 Notes:
 
+- `pack` / `dist` / `dist:win` use **`--publish never`** so artifact-only builds (including GitHub Actions) do not require `GH_TOKEN`. To upload to GitHub Releases, run `electron-builder` with an explicit `--publish` mode and provide `GH_TOKEN` (see electron-builder docs).
 - Cross-building (e.g. building macOS from Windows) is not supported by default; build on the target OS.
 - If you hit native module ABI issues during packaging, run:
 
