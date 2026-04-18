@@ -40,35 +40,35 @@ jobs:
   windows-installer:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop-ci-checkout
     steps:
+      # Checkout into a plain subfolder to avoid Windows runner edge cases when the repo name ends with '.'.
       - uses: actions/checkout@v4
+        with:
+          path: desktop-ci-checkout
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: package-lock.json
+          node-version-file: desktop-ci-checkout/.nvmrc
       - name: Install dependencies (retry)
-        shell: bash
+        shell: pwsh
         run: |
-          for i in 1 2 3; do
-            npm ci && break
-            if [ "$i" -eq 3 ]; then
-              echo "npm ci failed after 3 attempts"
-              exit 1
-            fi
-            echo "npm ci failed, retrying in 10s..."
-            sleep 10
-          done
+          $ok = $false
+          for ($i = 1; $i -le 3; $i++) {
+            npm ci
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            if ($i -eq 3) { throw "npm ci failed after 3 attempts" }
+            Start-Sleep -Seconds 10
+          }
       - name: Build Windows installer (NSIS)
+        shell: pwsh
         run: npm run dist:win
       - name: Upload Windows installer artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-installer-${{ github.run_id }}
-          path: |
-            dist/*.exe
-            dist/*.blockmap
-            dist/latest*.yml
+          path: desktop-ci-checkout/dist/
           if-no-files-found: error
 
   desktop-e2e:
@@ -138,12 +138,26 @@ jobs:
             fi
             echo "desktop ui-flow e2e failed, retrying..."
           done
+      - name: Collect desktop main logs for upload
+        if: failure()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-desktop-logs
+          LOG_DIR="$(node -e "const p=require('path'); console.log(p.resolve('src/main/logging','../../../../../runtime/logs'));")"
+          echo "Resolved log dir: ${LOG_DIR}"
+          if [[ -f "${LOG_DIR}/desktop-main.log" ]]; then
+            cp "${LOG_DIR}/desktop-main.log" .ci-desktop-logs/
+          fi
+          shopt -s nullglob || true
+          for f in "${LOG_DIR}"/desktop-main.*.log; do
+            [[ -e "$f" ]] || continue
+            cp "$f" .ci-desktop-logs/
+          done
       - name: Upload desktop runtime logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-runtime-logs-${{ github.run_id }}
-          path: |
-            ../../runtime/logs/desktop-main.log
-            ../../runtime/logs/desktop-main.*.log
+          path: .ci-desktop-logs/
           if-no-files-found: ignore
