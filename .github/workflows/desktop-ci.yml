@@ -149,8 +149,9 @@ jobs:
             echo "npm ci failed, retrying in 10s..."
             sleep 10
           done
+      # Comma-separated -w only: multiple -w breaks @electron/rebuild (argv.w.split).
       - name: Rebuild better-sqlite3 for Electron ABI
-        run: npm run rebuild:electron
+        run: npx electron-rebuild -f -w better-sqlite3,better-sqlite3-multiple-ciphers,sharp
       - name: Desktop E2E startup
         run: |
           for i in 1 2; do
