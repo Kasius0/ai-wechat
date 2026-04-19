@@ -118,6 +118,8 @@ jobs:
     env:
       # Avoid transient GitHub release download 5xx for Electron installs in CI.
       ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      # ubuntu-latest: Chromium SUID sandbox is not usable; Electron aborts without this (SIGTRAP / setuid_sandbox_host).
+      ELECTRON_DISABLE_SANDBOX: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
